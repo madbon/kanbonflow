@@ -5,6 +5,7 @@ namespace common\modules\kanban\models;
 use Yii;
 use common\modules\taskmonitor\models\Task;
 use common\modules\taskmonitor\models\TaskCategory;
+use common\modules\taskmonitor\models\TaskColorSettings;
 use common\modules\kanban\models\KanbanColumn;
 
 /**
@@ -33,53 +34,55 @@ class KanbanBoard
     }
 
     /**
-     * Get task statistics for the board
+     * Get task statistics for the board based on task_color_settings
      * @return array
      */
     public static function getStatistics()
     {
         $now = time();
         $today = strtotime('today');
-        $tomorrow = strtotime('tomorrow');
-        $threeDaysFromNow = strtotime('+3 days');
-        $oneWeekFromNow = strtotime('+1 week');
-        $oneMonthFromNow = strtotime('+1 month');
+        
+        // Get deadline ranges from task_color_settings
+        $settings = TaskColorSettings::getActiveSettings();
+        $statistics = [];
         
         // Base query for non-completed tasks
         $baseQuery = Task::find()->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
         
-        // Calculate counts
-        $overdueQuery = clone $baseQuery;
-        $overdueCount = $overdueQuery->andWhere(['<', 'deadline', $today])->count();
+        foreach ($settings as $index => $setting) {
+            $key = strtolower(str_replace(' ', '_', $setting->name));
+            
+            if ($setting->name === 'Overdue') {
+                // Overdue tasks (deadline < today)
+                $query = clone $baseQuery;
+                $count = $query->andWhere(['<', 'deadline', $today])->count();
+            } else {
+                // Calculate date range for this setting
+                $currentDays = $setting->days_before_deadline;
+                $nextSetting = isset($settings[$index + 1]) ? $settings[$index + 1] : null;
+                $nextDays = $nextSetting ? $nextSetting->days_before_deadline : 365;
+                
+                $fromDate = strtotime("+{$currentDays} days", $today);
+                $toDate = strtotime("+{$nextDays} days", $today);
+                
+                $query = clone $baseQuery;
+                $count = $query->andWhere(['>=', 'deadline', $fromDate])
+                    ->andWhere(['<', 'deadline', $toDate])
+                    ->count();
+            }
+            
+            $statistics[$key] = [
+                'count' => $count,
+                'name' => $setting->name,
+                'color' => $setting->color,
+                'icon' => $setting->getIcon(),
+                'display_name' => $setting->getDisplayName(),
+                'days_before_deadline' => $setting->days_before_deadline,
+                'sort_order' => $setting->sort_order,
+            ];
+        }
         
-        $todayQuery = clone $baseQuery;
-        $todayCount = $todayQuery->andWhere(['>=', 'deadline', $today])
-            ->andWhere(['<', 'deadline', $tomorrow])->count();
-            
-        $oneDayQuery = clone $baseQuery;
-        $oneDayCount = $oneDayQuery->andWhere(['>=', 'deadline', $tomorrow])
-            ->andWhere(['<', 'deadline', strtotime('+2 days')])->count();
-            
-        $threeDaysQuery = clone $baseQuery;
-        $threeDaysCount = $threeDaysQuery->andWhere(['>=', 'deadline', strtotime('+2 days')])
-            ->andWhere(['<', 'deadline', $threeDaysFromNow])->count();
-            
-        $oneWeekQuery = clone $baseQuery;
-        $oneWeekCount = $oneWeekQuery->andWhere(['>=', 'deadline', $threeDaysFromNow])
-            ->andWhere(['<', 'deadline', $oneWeekFromNow])->count();
-            
-        $oneMonthQuery = clone $baseQuery;
-        $oneMonthCount = $oneMonthQuery->andWhere(['>=', 'deadline', $oneWeekFromNow])
-            ->andWhere(['<', 'deadline', $oneMonthFromNow])->count();
-        
-        return [
-            'overdue' => $overdueCount,
-            'today' => $todayCount,
-            'one_day' => $oneDayCount,
-            'three_days' => $threeDaysCount,
-            'one_week' => $oneWeekCount,
-            'one_month' => $oneMonthCount,
-        ];
+        return $statistics;
     }
 
     /**

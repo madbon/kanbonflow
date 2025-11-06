@@ -352,83 +352,26 @@ $this->registerCss('
         font-size: 14px;
     }
 
-    /* Specific styling for each deadline category */
-    .stat-overdue {
-        border-left-color: #dc3545;
-        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+    /* Dynamic styling based on task_color_settings */
+    .stat-card[style*="border-left-color"] {
+        position: relative;
+        overflow: hidden;
     }
 
-    .stat-overdue .stat-number {
-        color: #dc3545;
+    .stat-card[style*="border-left-color"]:before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: currentColor;
+        opacity: 0.03;
+        pointer-events: none;
     }
 
-    .stat-overdue .stat-label {
-        color: #dc3545;
-    }
-
-    .stat-today {
-        border-left-color: #fd7e14;
-        background: linear-gradient(135deg, #fff8f1 0%, #ffffff 100%);
-    }
-
-    .stat-today .stat-number {
-        color: #fd7e14;
-    }
-
-    .stat-today .stat-label {
-        color: #fd7e14;
-    }
-
-    .stat-one-day {
-        border-left-color: #ffc107;
-        background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
-    }
-
-    .stat-one-day .stat-number {
-        color: #e09800;
-    }
-
-    .stat-one-day .stat-label {
-        color: #e09800;
-    }
-
-    .stat-three-days {
-        border-left-color: #17a2b8;
-        background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
-    }
-
-    .stat-three-days .stat-number {
-        color: #17a2b8;
-    }
-
-    .stat-three-days .stat-label {
-        color: #17a2b8;
-    }
-
-    .stat-one-week {
-        border-left-color: #007bff;
-        background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-    }
-
-    .stat-one-week .stat-number {
-        color: #007bff;
-    }
-
-    .stat-one-week .stat-label {
-        color: #007bff;
-    }
-
-    .stat-one-month {
-        border-left-color: #28a745;
-        background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
-    }
-
-    .stat-one-month .stat-number {
-        color: #28a745;
-    }
-
-    .stat-one-month .stat-label {
-        color: #28a745;
+    .stat-card:hover[style*="border-left-color"]:before {
+        opacity: 0.06;
     }
 
     /* Responsive design for stats */
@@ -454,7 +397,7 @@ $this->registerCss('
         }
     }
 
-    /* Animation for urgent tasks */
+    /* Animation for overdue tasks */
     .stat-overdue:hover {
         animation: urgentPulse 1s ease-in-out;
     }
@@ -466,6 +409,12 @@ $this->registerCss('
         50% { 
             transform: translateY(-2px) scale(1.05); 
         }
+    }
+
+    /* Enhanced hover effects for all stat cards */
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     }
 ');
 
@@ -489,32 +438,18 @@ $statistics = KanbanBoard::getStatistics();
             </div>
         </div>
         
-        <!-- Deadline Statistics Cards -->
+        <!-- Deadline Statistics Cards (Based on Task Color Settings) -->
         <div class="kanban-stats">
-            <div class="stat-card stat-overdue">
-                <div class="stat-number"><?= $statistics['overdue'] ?></div>
-                <div class="stat-label"><i class="fa fa-exclamation-triangle"></i> Overdue</div>
-            </div>
-            <div class="stat-card stat-today">
-                <div class="stat-number"><?= $statistics['today'] ?></div>
-                <div class="stat-label"><i class="fa fa-calendar-day"></i> Due Today</div>
-            </div>
-            <div class="stat-card stat-one-day">
-                <div class="stat-number"><?= $statistics['one_day'] ?></div>
-                <div class="stat-label"><i class="fa fa-clock"></i> Due Tomorrow</div>
-            </div>
-            <div class="stat-card stat-three-days">
-                <div class="stat-number"><?= $statistics['three_days'] ?></div>
-                <div class="stat-label"><i class="fa fa-calendar-week"></i> Due in 3 Days</div>
-            </div>
-            <div class="stat-card stat-one-week">
-                <div class="stat-number"><?= $statistics['one_week'] ?></div>
-                <div class="stat-label"><i class="fa fa-calendar"></i> Due in 1 Week</div>
-            </div>
-            <div class="stat-card stat-one-month">
-                <div class="stat-number"><?= $statistics['one_month'] ?></div>
-                <div class="stat-label"><i class="fa fa-calendar-alt"></i> Due in 1 Month</div>
-            </div>
+            <?php foreach ($statistics as $key => $stat): ?>
+                <div class="stat-card stat-<?= $key ?>" 
+                     style="border-left-color: <?= $stat['color'] ?>">
+                    <div class="stat-number" style="color: <?= $stat['color'] ?>"><?= $stat['count'] ?></div>
+                    <div class="stat-label" style="color: <?= $stat['color'] ?>">
+                        <i class="fa <?= $stat['icon'] ?>"></i> 
+                        <?= Html::encode($stat['display_name']) ?>
+                    </div>
+                </div>
+            <?php endforeach; ?>
         </div>
     </div>
 

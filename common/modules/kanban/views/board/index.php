@@ -384,6 +384,37 @@ $statistics = KanbanBoard::getStatistics();
     </div>
 </div>
 
+<!-- Task Details Modal -->
+<div id="taskDetailsModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="taskDetailsModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="taskDetailsModalLabel">Task Details</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="taskDetailsContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading task details...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editTaskFromDetails" style="display: none;">
+                    <i class="fa fa-edit"></i> Edit Task
+                </button>
+                <button type="button" class="btn btn-danger" id="deleteTaskFromDetails" style="display: none;">
+                    <i class="fa fa-trash"></i> Delete Task
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 $this->registerJs("
     // Initialize Kanban Board
@@ -395,6 +426,7 @@ $this->registerJs("
         editColumnUrl: '" . Url::to(['edit-column']) . "',
         deleteColumnUrl: '" . Url::to(['delete-column']) . "',
         getTaskUrl: '" . Url::to(['get-task']) . "',
+        getTaskDetailsUrl: '" . Url::to(['get-task-details']) . "',
         editTaskUrl: '" . Url::to(['edit-task']) . "',
         deleteTaskUrl: '" . Url::to(['delete-task']) . "',
         csrfToken: '" . Yii::$app->request->csrfToken . "',

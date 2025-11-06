@@ -13,6 +13,7 @@ var KanbanBoard = {
         editColumnUrl: '',
         deleteColumnUrl: '',
         getTaskUrl: '',
+        getTaskDetailsUrl: '',
         editTaskUrl: '',
         deleteTaskUrl: '',
         csrfToken: '',
@@ -92,6 +93,19 @@ var KanbanBoard = {
 
         $('#updateTaskBtn').on('click', function() {
             self.updateTask();
+        });
+
+        // Task details modal buttons
+        $('#editTaskFromDetails').on('click', function() {
+            var taskId = $(this).data('task-id');
+            $('#taskDetailsModal').modal('hide');
+            self.editTask(taskId);
+        });
+
+        $('#deleteTaskFromDetails').on('click', function() {
+            var taskId = $(this).data('task-id');
+            $('#taskDetailsModal').modal('hide');
+            self.deleteTask(taskId);
         });
     },
 
@@ -199,12 +213,190 @@ var KanbanBoard = {
     },
 
     showTaskDetails: function(taskId) {
-        // This would typically load task details via AJAX
-        // For now, just show a placeholder modal
-        $('#taskModal .modal-body').html('<p>Loading task details...</p>');
-        $('#taskModal').modal('show');
+        var self = this;
         
-        // TODO: Load actual task details via AJAX
+        console.log('Loading task details for ID:', taskId);
+        
+        // Show loading state
+        $('#taskDetailsContent').html(`
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Loading task details...</p>
+            </div>
+        `);
+        
+        // Hide action buttons initially
+        $('#editTaskFromDetails, #deleteTaskFromDetails').hide();
+        
+        // Show modal
+        $('#taskDetailsModal').modal('show');
+        
+        // Load task details
+        var ajaxData = { id: taskId };
+        if (self.config.csrfParam && self.config.csrfToken) {
+            ajaxData[self.config.csrfParam] = self.config.csrfToken;
+        }
+        
+        $.ajax({
+            url: self.config.getTaskDetailsUrl,
+            method: 'GET',
+            data: ajaxData,
+            success: function(response) {
+                if (response.success && response.task) {
+                    self.renderTaskDetails(response.task);
+                    
+                    // Show action buttons
+                    $('#editTaskFromDetails, #deleteTaskFromDetails').show().data('task-id', taskId);
+                } else {
+                    self.showTaskDetailsError(response.message || 'Failed to load task details');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.log('AJAX error loading task details:', xhr, status, error);
+                self.showTaskDetailsError('Error loading task details');
+            }
+        });
+    },
+
+    renderTaskDetails: function(task) {
+        var self = this;
+        
+        // Determine priority and status badge classes
+        var priorityClass = {
+            'low': 'badge-success',
+            'medium': 'badge-warning', 
+            'high': 'badge-danger',
+            'critical': 'badge-dark'
+        }[task.priority] || 'badge-secondary';
+        
+        var statusClass = {
+            'pending': 'badge-secondary',
+            'in_progress': 'badge-primary',
+            'completed': 'badge-success',
+            'cancelled': 'badge-danger'
+        }[task.status] || 'badge-secondary';
+        
+        // Build images section
+        var imagesHtml = '';
+        if (task.images && task.images.length > 0) {
+            imagesHtml = '<div class="task-images mt-3"><h6>Attachments:</h6><div class="row">';
+            task.images.forEach(function(image) {
+                imagesHtml += `
+                    <div class="col-md-3 mb-2">
+                        <div class="card">
+                            <img src="${image.url}" class="card-img-top" alt="${image.name}" style="height: 100px; object-fit: cover;">
+                            <div class="card-body p-2">
+                                <small class="card-text">${image.name}</small>
+                                <br><small class="text-muted">${image.size}</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            imagesHtml += '</div></div>';
+        }
+        
+        // Build deadline section with color coding
+        var deadlineHtml = '';
+        if (task.deadline_timestamp) {
+            var deadlineClass = task.is_overdue ? 'text-danger' : (task.days_until_deadline <= 3 ? 'text-warning' : 'text-info');
+            var deadlineIcon = task.is_overdue ? 'fa-exclamation-triangle' : 'fa-calendar';
+            deadlineHtml = `
+                <div class="deadline-info ${deadlineClass}">
+                    <i class="fa ${deadlineIcon}"></i> 
+                    ${task.deadline}
+                    ${task.is_overdue ? ' (OVERDUE)' : (task.days_until_deadline !== null ? ` (${task.days_until_deadline} days)` : '')}
+                </div>
+            `;
+        } else {
+            deadlineHtml = '<span class="text-muted">No deadline set</span>';
+        }
+        
+        // Build category section
+        var categoryHtml = '';
+        if (task.category) {
+            var categoryStyle = task.category.color ? `background-color: ${task.category.color}20; border-left: 4px solid ${task.category.color};` : '';
+            categoryHtml = `
+                <div class="category-info p-2 mb-3" style="${categoryStyle}">
+                    <i class="${task.category.icon || 'fa-folder'}"></i>
+                    <strong>${task.category.name}</strong>
+                    ${task.category.description ? `<br><small class="text-muted">${task.category.description}</small>` : ''}
+                </div>
+            `;
+        }
+        
+        var html = `
+            <div class="task-details">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5 class="task-title">${task.title}</h5>
+                        <div class="task-badges mb-3">
+                            <span class="badge ${priorityClass}">${task.priority_label} Priority</span>
+                            <span class="badge ${statusClass}">${task.status_label}</span>
+                        </div>
+                        
+                        ${categoryHtml}
+                        
+                        <div class="task-description">
+                            <h6>Description:</h6>
+                            <div class="description-content">${task.description || '<em class="text-muted">No description provided</em>'}</div>
+                        </div>
+                        
+                        ${imagesHtml}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="task-meta">
+                            <h6>Task Information</h6>
+                            
+                            <div class="meta-item mb-2">
+                                <strong>Deadline:</strong><br>
+                                ${deadlineHtml}
+                            </div>
+                            
+                            <div class="meta-item mb-2">
+                                <strong>Created:</strong><br>
+                                <small class="text-muted">${task.created_at}</small>
+                            </div>
+                            
+                            <div class="meta-item mb-2">
+                                <strong>Last Updated:</strong><br>
+                                <small class="text-muted">${task.updated_at}</small>
+                            </div>
+                            
+                            ${task.completed_at ? `
+                                <div class="meta-item mb-2">
+                                    <strong>Completed:</strong><br>
+                                    <small class="text-success">${task.completed_at}</small>
+                                </div>
+                            ` : ''}
+                            
+                            ${task.assigned_to ? `
+                                <div class="meta-item mb-2">
+                                    <strong>Assigned To:</strong><br>
+                                    <small>${task.assigned_to}</small>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#taskDetailsContent').html(html);
+        $('#taskDetailsModalLabel').text(task.title);
+    },
+
+    showTaskDetailsError: function(message) {
+        $('#taskDetailsContent').html(`
+            <div class="alert alert-danger">
+                <i class="fa fa-exclamation-triangle"></i>
+                <strong>Error:</strong> ${message}
+            </div>
+        `);
+        $('#editTaskFromDetails, #deleteTaskFromDetails').hide();
     },
 
     editTask: function(taskId) {

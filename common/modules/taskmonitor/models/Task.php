@@ -80,7 +80,7 @@ class Task extends \yii\db\ActiveRecord
             [['priority'], 'string', 'max' => 20],
             [['status'], 'string', 'max' => 20],
             [['priority'], 'in', 'range' => [self::PRIORITY_LOW, self::PRIORITY_MEDIUM, self::PRIORITY_HIGH, self::PRIORITY_CRITICAL]],
-            [['status'], 'in', 'range' => [self::STATUS_PENDING, self::STATUS_IN_PROGRESS, self::STATUS_COMPLETED, self::STATUS_CANCELLED]],
+            [['status'], 'validateStatus'],
             [['category_id'], 'exist', 'skipOnError' => true, 'targetClass' => TaskCategory::className(), 'targetAttribute' => ['category_id' => 'id']],
         ];
     }
@@ -184,6 +184,35 @@ class Task extends \yii\db\ActiveRecord
     public function isOverdue()
     {
         return $this->deadline < time() && $this->status !== self::STATUS_COMPLETED;
+    }
+
+    /**
+     * Custom validation for status field
+     * Validates against both default statuses and kanban column statuses
+     */
+    public function validateStatus($attribute, $params)
+    {
+        // Allow default statuses
+        $defaultStatuses = [self::STATUS_PENDING, self::STATUS_IN_PROGRESS, self::STATUS_COMPLETED, self::STATUS_CANCELLED];
+        
+        if (in_array($this->$attribute, $defaultStatuses)) {
+            return;
+        }
+        
+        // Check if status exists in kanban columns
+        $kanbanColumnClass = '\common\modules\kanban\models\KanbanColumn';
+        if (class_exists($kanbanColumnClass)) {
+            $validColumns = $kanbanColumnClass::find()
+                ->where(['is_active' => 1])
+                ->select('status_key')
+                ->column();
+                
+            if (in_array($this->$attribute, $validColumns)) {
+                return;
+            }
+        }
+        
+        $this->addError($attribute, 'Invalid status value.');
     }
 
     /**

@@ -28,7 +28,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -45,6 +45,7 @@ class BoardController extends Controller
                     'edit-task' => ['POST'],
                     'delete-task' => ['POST'],
                     'get-task' => ['GET'],
+                    'get-task-details' => ['GET'],
                 ],
             ],
         ];
@@ -83,13 +84,25 @@ class BoardController extends Controller
             return ['success' => false, 'message' => 'Task not found'];
         }
 
-        // Validate status
-        $validStatuses = [Task::STATUS_PENDING, Task::STATUS_IN_PROGRESS, Task::STATUS_COMPLETED];
-        if (!in_array($newStatus, $validStatuses)) {
-            return ['success' => false, 'message' => 'Invalid status'];
+        // Validate status against existing kanban columns
+        $validColumns = KanbanColumn::find()
+            ->where(['is_active' => 1])
+            ->select('status_key')
+            ->column();
+        
+        if (!in_array($newStatus, $validColumns)) {
+            return ['success' => false, 'message' => 'Invalid status - column not found'];
         }
 
         $task->status = $newStatus;
+        
+        // Special handling for completed status
+        if ($newStatus === Task::STATUS_COMPLETED && !$task->completed_at) {
+            $task->completed_at = time();
+        } elseif ($newStatus !== Task::STATUS_COMPLETED && $task->completed_at) {
+            $task->completed_at = null;
+        }
+        
         if ($task->save()) {
             return [
                 'success' => true, 
@@ -400,6 +413,145 @@ class BoardController extends Controller
             return ['success' => true, 'message' => 'Task deleted successfully'];
         } else {
             return ['success' => false, 'message' => 'Failed to delete task'];
+        }
+    }
+
+    /**
+     * Get full task details for the details modal
+     * @return array
+     */
+    public function actionGetTaskDetails()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $id = Yii::$app->request->get('id');
+        
+        $task = Task::findOne($id);
+        if (!$task) {
+            return ['success' => false, 'message' => 'Task not found'];
+        }
+
+        // Get task images
+        $images = [];
+        foreach ($task->images as $image) {
+            $images[] = [
+                'id' => $image->id,
+                'url' => $image->getImageUrl(),
+                'name' => $image->original_name,
+                'size' => $image->getFormattedSize(),
+            ];
+        }
+
+        // Format dates
+        $createdAt = $task->created_at ? date('M j, Y g:i A', $task->created_at) : 'N/A';
+        $updatedAt = $task->updated_at ? date('M j, Y g:i A', $task->updated_at) : 'N/A';
+        $deadline = $task->deadline ? date('M j, Y g:i A', $task->deadline) : 'No deadline';
+        $completedAt = $task->completed_at ? date('M j, Y g:i A', $task->completed_at) : null;
+
+        // Get priority and status labels
+        $priorityLabels = [
+            'low' => 'Low',
+            'medium' => 'Medium', 
+            'high' => 'High',
+            'critical' => 'Critical'
+        ];
+
+        $statusLabels = [
+            'pending' => 'To Do',
+            'in_progress' => 'In Progress',
+            'completed' => 'Completed',
+            'cancelled' => 'Cancelled'
+        ];
+
+        // Calculate days until deadline
+        $daysUntilDeadline = null;
+        $isOverdue = false;
+        if ($task->deadline) {
+            $now = time();
+            $daysUntilDeadline = ceil(($task->deadline - $now) / (24 * 60 * 60));
+            $isOverdue = $daysUntilDeadline < 0;
+        }
+
+        return [
+            'success' => true,
+            'task' => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'status' => $task->status,
+                'status_label' => isset($statusLabels[$task->status]) ? $statusLabels[$task->status] : $task->status,
+                'priority' => $task->priority,
+                'priority_label' => isset($priorityLabels[$task->priority]) ? $priorityLabels[$task->priority] : $task->priority,
+                'deadline' => $deadline,
+                'deadline_timestamp' => $task->deadline,
+                'days_until_deadline' => $daysUntilDeadline,
+                'is_overdue' => $isOverdue,
+                'completed_at' => $completedAt,
+                'created_at' => $createdAt,
+                'updated_at' => $updatedAt,
+                'assigned_to' => $task->assigned_to,
+                'category' => $task->category ? [
+                    'id' => $task->category->id,
+                    'name' => $task->category->name,
+                    'color' => $task->category->color,
+                    'icon' => $task->category->icon,
+                    'description' => $task->category->description,
+                ] : null,
+                'images' => $images,
+            ]
+        ];
+    }
+
+    /**
+     * Test page for task details functionality
+     */
+    public function actionTest()
+    {
+        return $this->render('test');
+    }
+
+    /**
+     * Create test data for debugging
+     */
+    public function actionCreateTestData()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        try {
+            // Create test category
+            $category = new \common\models\TaskCategory();
+            $category->name = 'Test Category';
+            $category->color = '#3498db';
+            $category->description = 'Test category for debugging';
+            
+            if (!$category->save()) {
+                return ['success' => false, 'message' => 'Failed to create category', 'errors' => $category->getErrors()];
+            }
+            
+            // Create test task
+            $task = new \common\models\Task();
+            $task->title = 'Test Task for Details Modal';
+            $task->description = "This is a test task created to verify the task details modal functionality.\n\nIt includes:\n- Multiple lines\n- Priority settings\n- Category assignment\n- Deadline settings";
+            $task->status = 'pending';
+            $task->priority = 'medium';
+            $task->category_id = $category->id;
+            $task->deadline = time() + (7 * 24 * 60 * 60); // 7 days from now
+            $task->created_at = time();
+            $task->updated_at = time();
+            
+            if (!$task->save()) {
+                return ['success' => false, 'message' => 'Failed to create task', 'errors' => $task->getErrors()];
+            }
+            
+            return [
+                'success' => true, 
+                'message' => 'Test data created successfully',
+                'task_id' => $task->id,
+                'category_id' => $category->id
+            ];
+            
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
         }
     }
 }

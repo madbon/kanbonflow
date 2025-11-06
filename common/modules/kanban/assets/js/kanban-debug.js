@@ -488,24 +488,7 @@ var KanbanBoard = {
             'cancelled': 'badge-danger'
         }[task.status] || 'badge-secondary';
         
-        // Build images section
-        var imagesHtml = '';
-        if (task.images && task.images.length > 0) {
-            imagesHtml = '<div class="task-images mt-3"><h6>Attachments:</h6><div class="row">';
-            task.images.forEach(function(image) {
-                imagesHtml += 
-                    '<div class="col-md-3 mb-2">' +
-                        '<div class="card">' +
-                            '<img src="' + image.url + '" class="card-img-top" alt="' + image.name + '" style="height: 100px; object-fit: cover;">' +
-                            '<div class="card-body p-2">' +
-                                '<small class="card-text">' + image.name + '</small>' +
-                                '<br><small class="text-muted">' + image.size + '</small>' +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-            });
-            imagesHtml += '</div></div>';
-        }
+        // Images section removed - now handled by task-images-section
         
         // Build deadline section with color coding
         var deadlineHtml = '';
@@ -556,8 +539,6 @@ var KanbanBoard = {
                             '<h6>Description:</h6>' +
                             '<div class="description-content">' + (task.description || '<em class="text-muted">No description provided</em>') + '</div>' +
                         '</div>' +
-                        
-                        imagesHtml +
                     '</div>' +
                     
                     '<div class="col-md-4">' +
@@ -599,7 +580,7 @@ var KanbanBoard = {
                 // Comments Section
                 '<div class="row mt-4">' +
                     '<div class="col-12">' +
-                        '<div class="comments-section">' +
+                        '<div class="task-comments-section">' +
                             '<h6><i class="fa fa-comments"></i> Comments</h6>' +
                             '<div class="add-comment-form mb-3">' +
                                 '<div class="form-group">' +
@@ -1711,7 +1692,14 @@ var KanbanBoard = {
         
         // Add to task details modal if not already present
         if ($('#taskDetailsModal .task-images-section').length === 0) {
-            $('#taskDetailsModal .modal-body').append(imageUploadHtml);
+            // Check if comments section exists and insert before it
+            var $commentsSection = $('#taskDetailsModal .task-comments-section');
+            if ($commentsSection.length > 0) {
+                $commentsSection.before(imageUploadHtml);
+            } else {
+                // If no comments section, append to modal body
+                $('#taskDetailsModal .modal-body').append(imageUploadHtml);
+            }
         }
     },
 

@@ -2280,30 +2280,59 @@ function emphasizeTaskInBoard(taskId) {
             }
         }
         
-        console.log('Found task card, scrolling and emphasizing...');
+                console.log('Found task card, scrolling and emphasizing...');
+                
+                // First, scroll the column container to show the task
+                var columnBody = taskCard.closest('.kanban-column-body');
+                if (columnBody.length > 0) {
+                    var taskOffsetInColumn = taskCard.position().top;
+                    var columnScrollTop = columnBody.scrollTop();
+                    var columnHeight = columnBody.height();
+                    var taskHeight = taskCard.outerHeight();
+                    
+                    console.log('Column scroll info:', {
+                        taskOffsetInColumn: taskOffsetInColumn,
+                        columnScrollTop: columnScrollTop,
+                        columnHeight: columnHeight,
+                        taskHeight: taskHeight
+                    });
+                    
+                    // Check if task is outside visible area of the column
+                    if (taskOffsetInColumn < 0 || taskOffsetInColumn + taskHeight > columnHeight) {
+                        // Calculate new scroll position to center the task in the column
+                        var newScrollTop = columnScrollTop + taskOffsetInColumn - (columnHeight / 2) + (taskHeight / 2);
+                        
+                        console.log('Scrolling column to position:', newScrollTop);
+                        
+                        // Scroll the column smoothly
+                        columnBody.animate({
+                            scrollTop: newScrollTop
+                        }, 600, 'swing');
+                    }
+                }
+                
+                // Then scroll the page to the column area
+                $('html, body').animate({
+                    scrollTop: taskCard.offset().top - 150
+                }, 800, 'swing');
+                
+                // Add emphasis effect after scrolling completes
+                setTimeout(function() {
+                    taskCard.addClass('task-emphasized');
+                    console.log('Added emphasis class to task: ' + taskId);
+                }, 900); // Wait for both column and page scrolling to complete
+                
+                // Remove emphasis after 2 seconds
+                setTimeout(function() {
+                    taskCard.removeClass('task-emphasized');
+                    console.log('Removed emphasis class from task: ' + taskId);
+                }, 2900); // Adjusted timing based on new emphasis start time
         
-        // Scroll to the task card with smooth animation
-        $('html, body').animate({
-            scrollTop: taskCard.offset().top - 100
-        }, 800, 'swing');
-        
-        // Add emphasis effect after a short delay to ensure scrolling starts
-        setTimeout(function() {
-            taskCard.addClass('task-emphasized');
-            console.log('Added emphasis class to task: ' + taskId);
-        }, 200);
-        
-        // Remove emphasis after 2 seconds
-        setTimeout(function() {
-            taskCard.removeClass('task-emphasized');
-            console.log('Removed emphasis class from task: ' + taskId);
-        }, 2200);
-        
-        // Also open the task modal after the emphasis effect for better UX
-        setTimeout(function() {
-            console.log('Opening task modal for: ' + taskId);
-            openTaskModal(taskId);
-        }, 1000);
+                // Also open the task modal after the emphasis effect for better UX
+                setTimeout(function() {
+                    console.log('Opening task modal for: ' + taskId);
+                    openTaskModal(taskId);
+                }, 1500); // Wait for scrolling to complete before opening modal
         
     }, 300); // Wait for modal close animation
 }

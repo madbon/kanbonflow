@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Column Scrolling with Emphasis</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        .kanban-board {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .kanban-column {
+            width: 300px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .kanban-column-header {
+            padding: 15px;
+            background: #6c757d;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .kanban-column-body {
+            padding: 20px;
+            height: 300px; /* Fixed height to force scrolling */
+            overflow-y: auto;
+            background: white;
+        }
+        
+        .kanban-task {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .kanban-task:hover {
+            background: #e9ecef;
+        }
+        
+        .task-emphasized {
+            animation: taskEmphasize 2s ease-in-out;
+            transform-origin: center;
+            z-index: 1000;
+            position: relative;
+        }
+        
+        @keyframes taskEmphasize {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1);
+            }
+            25% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.4);
+                background-color: rgba(255, 193, 7, 0.15);
+                transform: scale(1.02);
+            }
+            50% { 
+                box-shadow: 0 0 30px 15px rgba(255, 193, 7, 0.3);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1.01);
+            }
+            75% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.2);
+                background-color: rgba(255, 193, 7, 0.05);
+                transform: scale(1.005);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+                background-color: transparent;
+                transform: scale(1);
+            }
+        }
+        
+        .task-emphasized::before {
+            content: "";
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            animation: emphasisBorder 2s ease-in-out;
+            pointer-events: none;
+        }
+        
+        @keyframes emphasisBorder {
+            0%, 100% { 
+                opacity: 0;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.01);
+            }
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        .controls button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .controls button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Column Scrolling with Task Emphasis</h1>
+    
+    <div class="controls">
+        <button onclick="emphasizeTaskInBoard(11)">Emphasize Task 11 (Top)</button>
+        <button onclick="emphasizeTaskInBoard(15)">Emphasize Task 15 (Middle)</button>
+        <button onclick="emphasizeTaskInBoard(18)">Emphasize Task 18 (Bottom)</button>
+        <button onclick="emphasizeTaskInBoard(999)">Test Non-existent</button>
+    </div>
+    
+    <p><strong>Instructions:</strong> Scroll down in the "To Do" column, then click the buttons above to test automatic scrolling and emphasis.</p>
+    
+    <div class="kanban-board">
+        <div class="kanban-column">
+            <div class="kanban-column-header">To Do</div>
+            <div class="kanban-column-body">
+                <div class="kanban-task" data-task-id="11" data-status="pending">
+                    <strong>Task 11 - Top Task</strong><br>
+                    Status: Pending<br>
+                    This is at the top of the column
+                </div>
+                <div class="kanban-task" data-task-id="12" data-status="pending">
+                    <strong>Task 12 - Filler Task 1</strong><br>
+                    Status: Pending<br>
+                    This is a filler task
+                </div>
+                <div class="kanban-task" data-task-id="13" data-status="pending">
+                    <strong>Task 13 - Filler Task 2</strong><br>
+                    Status: Pending<br>
+                    This is a filler task
+                </div>
+                <div class="kanban-task" data-task-id="14" data-status="pending">
+                    <strong>Task 14 - Filler Task 3</strong><br>
+                    Status: Pending<br>
+                    This is a filler task
+                </div>
+                <div class="kanban-task" data-task-id="15" data-status="pending">
+                    <strong>Task 15 - Middle Task</strong><br>
+                    Status: Pending<br>
+                    This is in the middle - requires scrolling
+                </div>
+                <div class="kanban-task" data-task-id="16" data-status="pending">
+                    <strong>Task 16 - Filler Task 4</strong><br>
+                    Status: Pending<br>
+                    This is a filler task
+                </div>
+                <div class="kanban-task" data-task-id="17" data-status="pending">
+                    <strong>Task 17 - Filler Task 5</strong><br>
+                    Status: Pending<br>
+                    This is a filler task
+                </div>
+                <div class="kanban-task" data-task-id="18" data-status="pending">
+                    <strong>Task 18 - Bottom Task</strong><br>
+                    Status: Pending<br>
+                    This is at the bottom - requires more scrolling
+                </div>
+            </div>
+        </div>
+        
+        <div class="kanban-column">
+            <div class="kanban-column-header">In Progress</div>
+            <div class="kanban-column-body">
+                <div class="kanban-task" data-task-id="21" data-status="ongoing">
+                    <strong>Task 21 - In Progress</strong><br>
+                    Status: Ongoing<br>
+                    This task is in progress
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Enhanced emphasizeTaskInBoard function with column scrolling
+        function emphasizeTaskInBoard(taskId) {
+            console.log('Emphasizing task in board: ' + taskId);
+            
+            setTimeout(function() {
+                // Find the task card in the board
+                var taskCard = $('.kanban-task[data-task-id="' + taskId + '"]');
+                
+                console.log('Looking for task with selector: .kanban-task[data-task-id="' + taskId + '"]');
+                console.log('Found ' + taskCard.length + ' matching tasks');
+                
+                if (taskCard.length === 0) {
+                    console.warn('Task not found in board: ' + taskId);
+                    alert('Task not found in the current board view');
+                    return;
+                }
+                
+                console.log('Found task card, scrolling and emphasizing...');
+                
+                // First, scroll the column container to show the task
+                var columnBody = taskCard.closest('.kanban-column-body');
+                if (columnBody.length > 0) {
+                    var taskOffsetInColumn = taskCard.position().top;
+                    var columnScrollTop = columnBody.scrollTop();
+                    var columnHeight = columnBody.height();
+                    var taskHeight = taskCard.outerHeight();
+                    
+                    console.log('Column scroll info:', {
+                        taskOffsetInColumn: taskOffsetInColumn,
+                        columnScrollTop: columnScrollTop,
+                        columnHeight: columnHeight,
+                        taskHeight: taskHeight
+                    });
+                    
+                    // Check if task is outside visible area of the column
+                    if (taskOffsetInColumn < 0 || taskOffsetInColumn + taskHeight > columnHeight) {
+                        // Calculate new scroll position to center the task in the column
+                        var newScrollTop = columnScrollTop + taskOffsetInColumn - (columnHeight / 2) + (taskHeight / 2);
+                        
+                        console.log('Scrolling column to position:', newScrollTop);
+                        
+                        // Scroll the column smoothly
+                        columnBody.animate({
+                            scrollTop: newScrollTop
+                        }, 600, 'swing');
+                    }
+                }
+                
+                // Then scroll the page to the column area
+                $('html, body').animate({
+                    scrollTop: taskCard.offset().top - 150
+                }, 800, 'swing');
+                
+                // Add emphasis effect after scrolling completes
+                setTimeout(function() {
+                    taskCard.addClass('task-emphasized');
+                    console.log('Added emphasis class to task: ' + taskId);
+                }, 900); // Wait for both column and page scrolling to complete
+                
+                // Remove emphasis after 2 seconds
+                setTimeout(function() {
+                    taskCard.removeClass('task-emphasized');
+                    console.log('Removed emphasis class from task: ' + taskId);
+                }, 2900); // Adjusted timing based on new emphasis start time
+                
+            }, 300); // Wait for any modal to close
+        }
+    </script>
+</body>
+</html>

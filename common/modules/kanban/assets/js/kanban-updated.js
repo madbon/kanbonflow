@@ -123,7 +123,7 @@ var KanbanBoard = {
                 // Store task data
                 var taskData = {
                     id: taskElement.data('task-id'),
-                    fromColumn: taskElement.closest('.kanban-column').data('status')
+                    fromColumn: taskElement.closest('.kanban-column-body').data('status')
                 };
                 
                 e.originalEvent.dataTransfer.setData('text/json', JSON.stringify(taskData));
@@ -146,7 +146,14 @@ var KanbanBoard = {
             });
 
             columnElement.on('dragleave', function(e) {
-                $(this).removeClass('column-drag-over');
+                // Only remove drag-over if we're actually leaving the column
+                var rect = this.getBoundingClientRect();
+                var x = e.originalEvent.clientX;
+                var y = e.originalEvent.clientY;
+                
+                if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                    $(this).removeClass('column-drag-over');
+                }
             });
 
             columnElement.on('drop', function(e) {
@@ -155,6 +162,8 @@ var KanbanBoard = {
                 
                 var taskData = JSON.parse(e.originalEvent.dataTransfer.getData('text/json'));
                 var newStatus = $(this).data('status');
+                
+                console.log('Drop event - Task:', taskData.id, 'From:', taskData.fromColumn, 'To:', newStatus);
                 
                 if (taskData.fromColumn !== newStatus) {
                     self.moveTask(taskData.id, newStatus);
@@ -166,6 +175,14 @@ var KanbanBoard = {
     moveTask: function(taskId, newStatus) {
         var self = this;
         var taskElement = $('.kanban-task[data-task-id="' + taskId + '"]');
+        
+        console.log('Moving task:', taskId, 'to status:', newStatus);
+        console.log('Task element found:', taskElement.length > 0);
+        
+        if (taskElement.length === 0) {
+            console.error('Task element not found for ID:', taskId);
+            return;
+        }
         
         // Add moving state
         taskElement.addClass('task-moving');
@@ -183,16 +200,44 @@ var KanbanBoard = {
             method: 'POST',
             data: ajaxData,
             success: function(response) {
+                console.log('AJAX response:', response);
+                
                 if (response.success) {
+                    // Get source column before moving the task
+                    var sourceColumn = taskElement.closest('.kanban-column-body');
+                    console.log('Source column found:', sourceColumn.length > 0);
+                    
                     // Move task to new column
-                    var targetColumn = $('.kanban-column[data-status="' + newStatus + '"] .kanban-tasks');
+                    var targetColumn = $('.kanban-column-body[data-status="' + newStatus + '"]');
+                    console.log('Target column found:', targetColumn.length > 0, 'for status:', newStatus);
+                    
+                    if (targetColumn.length === 0) {
+                        console.error('Target column not found for status:', newStatus);
+                        self.showNotification('Target column not found', 'error');
+                        return;
+                    }
+                    
+                    // Remove empty column message from target if it exists
+                    targetColumn.find('.empty-column').remove();
+                    
+                    // Update task data-status attribute
+                    taskElement.attr('data-status', newStatus);
+                    
+                    // Append task to target column
                     taskElement.appendTo(targetColumn);
+                    console.log('Task moved to target column');
+                    
+                    // Check if source column is now empty and add empty message
+                    if (sourceColumn.find('.kanban-task').length === 0) {
+                        sourceColumn.append('<div class="empty-column"><p>No tasks in this column</p></div>');
+                    }
                     
                     // Update task counts
                     self.updateTaskCounts();
                     
                     self.showNotification('Task moved successfully', 'success');
                 } else {
+                    console.error('Move task failed:', response.message);
                     self.showNotification(response.message || 'Failed to move task', 'error');
                 }
             },

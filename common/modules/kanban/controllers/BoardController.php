@@ -127,7 +127,7 @@ class BoardController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
         
         $taskId = Yii::$app->request->post('taskId');
-        $position = Yii::$app->request->post('position');
+        $newPosition = Yii::$app->request->post('position');
         $status = Yii::$app->request->post('status');
         
         $task = Task::findOne($taskId);
@@ -135,18 +135,95 @@ class BoardController extends Controller
             return ['success' => false, 'message' => 'Task not found'];
         }
 
+        $oldStatus = $task->status;
+        $oldPosition = $task->position;
+
         // Update task status if it changed
         if ($task->status !== $status) {
             $task->status = $status;
+            
+            // Special handling for completed status
+            if ($status === Task::STATUS_COMPLETED && !$task->completed_at) {
+                $task->completed_at = time();
+            } elseif ($status !== Task::STATUS_COMPLETED && $task->completed_at) {
+                $task->completed_at = null;
+            }
         }
+
+        // Update positions for all affected tasks
+        $this->updateTaskPositions($task, $oldStatus, $newPosition, $status);
 
         if ($task->save()) {
             return [
                 'success' => true, 
-                'message' => 'Task position updated successfully'
+                'message' => 'Task position updated successfully',
+                'task' => [
+                    'id' => $task->id,
+                    'status' => $task->status,
+                    'position' => $task->position,
+                    'completed_at' => $task->completed_at,
+                ]
             ];
         } else {
             return ['success' => false, 'message' => 'Failed to update task position'];
+        }
+    }
+
+    /**
+     * Update task positions when a task is moved
+     */
+    private function updateTaskPositions($movedTask, $oldStatus, $newPosition, $newStatus)
+    {
+        // If moving to a different status (column)
+        if ($oldStatus !== $newStatus) {
+            // Decrement positions in old column for tasks that were after the moved task
+            Task::updateAllCounters(
+                ['position' => -1],
+                ['and', 
+                    ['status' => $oldStatus],
+                    ['>', 'position', $movedTask->position]
+                ]
+            );
+            
+            // Increment positions in new column for tasks at or after the new position
+            Task::updateAllCounters(
+                ['position' => 1],
+                ['and',
+                    ['status' => $newStatus],
+                    ['>=', 'position', $newPosition]
+                ]
+            );
+            
+            // Set the moved task's new position
+            $movedTask->position = $newPosition;
+        } else {
+            // Moving within the same column
+            $oldPosition = $movedTask->position;
+            
+            if ($newPosition < $oldPosition) {
+                // Moving up - increment positions between new and old position
+                Task::updateAllCounters(
+                    ['position' => 1],
+                    ['and',
+                        ['status' => $newStatus],
+                        ['>=', 'position', $newPosition],
+                        ['<', 'position', $oldPosition]
+                    ]
+                );
+            } else if ($newPosition > $oldPosition) {
+                // Moving down - decrement positions between old and new position
+                Task::updateAllCounters(
+                    ['position' => -1],
+                    ['and',
+                        ['status' => $newStatus],
+                        ['>', 'position', $oldPosition],
+                        ['<=', 'position', $newPosition]
+                    ]
+                );
+            }
+            
+            // Set the moved task's new position
+            $movedTask->position = $newPosition;
         }
     }
 
@@ -292,7 +369,12 @@ class BoardController extends Controller
         $task->priority = $priority ?: Task::PRIORITY_MEDIUM;
         $task->status = $status;
         $task->deadline = $deadline ? strtotime($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
-        $task->position = 0;
+        
+        // Set position to be at the end of the column
+        $maxPosition = Task::find()
+            ->where(['status' => $status])
+            ->max('position');
+        $task->position = $maxPosition !== null ? $maxPosition + 1 : 0;
         
         if ($task->save()) {
             return [

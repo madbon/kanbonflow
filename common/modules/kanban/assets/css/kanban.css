@@ -612,3 +612,62 @@
 .kanban-column-body::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+
+/* Drop Indicator for Positional Drag and Drop */
+.drop-indicator {
+    height: 2px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    margin: 4px 10px;
+    border-radius: 1px;
+    opacity: 0.8;
+    position: relative;
+    animation: pulse-indicator 1s ease-in-out infinite alternate;
+}
+
+.drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    background: #007bff;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.6);
+}
+
+.drop-indicator::after {
+    content: '';
+    position: absolute;
+    right: -4px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    background: #0056b3;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(0, 86, 179, 0.6);
+}
+
+@keyframes pulse-indicator {
+    from {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+    to {
+        opacity: 0.6;
+        transform: scaleY(1.5);
+    }
+}
+
+/* Enhanced drag states */
+.task-dragging {
+    opacity: 0.5;
+    transform: rotate(2deg);
+    transition: all 0.2s ease;
+}
+
+.column-drag-over {
+    background-color: rgba(0, 123, 255, 0.05);
+    border: 2px dashed #007bff;
+    transition: all 0.2s ease;
+}

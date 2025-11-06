@@ -29,6 +29,9 @@ $statistics = KanbanBoard::getStatistics();
                 <button class="btn btn-secondary btn-add-column" data-toggle="modal" data-target="#addColumnModal">
                     <i class="fa fa-columns"></i> Add Column
                 </button>
+                <button class="btn btn-info btn-debug-positions" onclick="debugPositions()">
+                    <i class="fa fa-bug"></i> Debug Positions
+                </button>
             </div>
         </div>
         
@@ -432,5 +435,45 @@ $this->registerJs("
         csrfToken: '" . Yii::$app->request->csrfToken . "',
         csrfParam: '" . Yii::$app->request->csrfParam . "'
     });
+
+    // Debug function to test position updates
+    window.debugPositions = function() {
+        console.log('=== DEBUG POSITIONS ===');
+        
+        // Show current task order in DOM
+        $('.kanban-column-body').each(function() {
+            var column = $(this);
+            var status = column.data('status') || column.closest('.kanban-column').data('status');
+            console.log('Column:', status);
+            
+            column.find('.kanban-task').each(function(index) {
+                var task = $(this);
+                var taskId = task.data('task-id');
+                console.log('  [' + index + '] Task ID:', taskId, 'DOM Position:', index);
+            });
+        });
+        
+        // Test moving task 2 to position 0
+        console.log('Testing position update...');
+        $.ajax({
+            url: '" . Url::to(['update-task-position']) . "',
+            method: 'POST',
+            data: {
+                taskId: 2,
+                position: 0,
+                status: 'completed',
+                '" . Yii::$app->request->csrfParam . "': '" . Yii::$app->request->csrfToken . "'
+            },
+            success: function(response) {
+                console.log('AJAX Success:', response);
+                alert('Position update result: ' + JSON.stringify(response));
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                console.error('Response:', xhr.responseText);
+                alert('AJAX Error: ' + error);
+            }
+        });
+    };
 ");
 ?>

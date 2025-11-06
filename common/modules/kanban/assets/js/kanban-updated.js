@@ -132,10 +132,12 @@ var KanbanBoard = {
 
             $(this).on('dragend', function(e) {
                 $(this).removeClass('task-dragging');
+                self.clearDropIndicator();
+                $('.column-drag-over').removeClass('column-drag-over');
             });
         });
 
-        // Make columns droppable
+        // Make columns droppable with positional support
         $('.kanban-column').each(function() {
             var columnElement = $(this);
             
@@ -143,6 +145,9 @@ var KanbanBoard = {
                 e.preventDefault();
                 e.originalEvent.dataTransfer.dropEffect = 'move';
                 $(this).addClass('column-drag-over');
+                
+                // Find drop position and show insertion indicator
+                self.updateDropIndicator(e, $(this));
             });
 
             columnElement.on('dragleave', function(e) {
@@ -153,6 +158,7 @@ var KanbanBoard = {
                 
                 if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
                     $(this).removeClass('column-drag-over');
+                    self.clearDropIndicator();
                 }
             });
 
@@ -163,20 +169,109 @@ var KanbanBoard = {
                 var taskData = JSON.parse(e.originalEvent.dataTransfer.getData('text/json'));
                 var newStatus = $(this).data('status');
                 
-                console.log('Drop event - Task:', taskData.id, 'From:', taskData.fromColumn, 'To:', newStatus);
+                // Calculate drop position
+                var dropInfo = self.calculateDropPosition(e, $(this));
                 
-                if (taskData.fromColumn !== newStatus) {
-                    self.moveTask(taskData.id, newStatus);
+                console.log('Drop event - Task:', taskData.id, 'From:', taskData.fromColumn, 'To:', newStatus, 'Position:', dropInfo);
+                
+                self.clearDropIndicator();
+                
+                // Always move if there's a status change or position change
+                if (taskData.fromColumn !== newStatus || (dropInfo && dropInfo.position !== null)) {
+                    self.moveTask(taskData.id, newStatus, dropInfo);
                 }
             });
         });
     },
 
-    moveTask: function(taskId, newStatus) {
+    updateDropIndicator: function(e, columnElement) {
+        this.clearDropIndicator();
+        
+        var columnBody = columnElement.find('.kanban-column-body');
+        var tasks = columnBody.find('.kanban-task:not(.task-dragging)');
+        var mouseY = e.originalEvent.clientY;
+        
+        var insertBefore = null;
+        var minDistance = Infinity;
+        
+        tasks.each(function() {
+            var taskRect = this.getBoundingClientRect();
+            var taskMiddle = taskRect.top + (taskRect.height / 2);
+            var distance = Math.abs(mouseY - taskMiddle);
+            
+            if (mouseY < taskMiddle && distance < minDistance) {
+                minDistance = distance;
+                insertBefore = $(this);
+            }
+        });
+        
+        // Create and show drop indicator
+        var indicator = $('<div class="drop-indicator"></div>');
+        
+        if (insertBefore && insertBefore.length) {
+            indicator.insertBefore(insertBefore);
+        } else {
+            // Insert at the end, but before empty-column message if it exists
+            var emptyColumn = columnBody.find('.empty-column');
+            if (emptyColumn.length) {
+                indicator.insertBefore(emptyColumn);
+            } else {
+                columnBody.append(indicator);
+            }
+        }
+    },
+
+    clearDropIndicator: function() {
+        $('.drop-indicator').remove();
+    },
+
+    calculateDropPosition: function(e, columnElement) {
+        var columnBody = columnElement.find('.kanban-column-body');
+        var tasks = columnBody.find('.kanban-task:not(.task-dragging)');
+        var mouseY = e.originalEvent.clientY;
+        
+        var insertBefore = null;
+        var position = 0;
+        var minDistance = Infinity;
+        
+        // If there are no tasks, position is 0
+        if (tasks.length === 0) {
+            return {
+                insertBefore: null,
+                position: 0,
+                totalTasks: 0
+            };
+        }
+        
+        // Find the task we should insert before
+        tasks.each(function(index) {
+            var taskRect = this.getBoundingClientRect();
+            var taskMiddle = taskRect.top + (taskRect.height / 2);
+            
+            if (mouseY < taskMiddle) {
+                insertBefore = $(this);
+                position = index;
+                return false; // Break the loop
+            }
+        });
+        
+        // If no insertBefore found, position at the end
+        if (!insertBefore) {
+            position = tasks.length;
+        }
+        
+        return {
+            insertBefore: insertBefore,
+            position: position,
+            totalTasks: tasks.length
+        };
+    },
+
+    moveTask: function(taskId, newStatus, dropInfo) {
         var self = this;
         var taskElement = $('.kanban-task[data-task-id="' + taskId + '"]');
         
-        console.log('Moving task:', taskId, 'to status:', newStatus);
+        console.log('Moving task:', taskId, 'to status:', newStatus, 'Drop info:', dropInfo);
         console.log('Task element found:', taskElement.length > 0);
         
         if (taskElement.length === 0) {
@@ -186,54 +281,31 @@ var KanbanBoard = {
         
         // Add moving state
         taskElement.addClass('task-moving');
-
+        
+        // Prepare AJAX data for position update
         var ajaxData = {
             taskId: taskId,
-            status: newStatus
+            status: newStatus,
+            position: dropInfo && dropInfo.position !== null ? dropInfo.position : 0
         };
         if (self.config.csrfParam && self.config.csrfToken) {
             ajaxData[self.config.csrfParam] = self.config.csrfToken;
         }
         
+        console.log('Sending position update:', ajaxData);
+        console.log('URL:', self.config.updatePositionUrl);
+        
         $.ajax({
-            url: self.config.updateTaskUrl,
+            url: self.config.updatePositionUrl,
             method: 'POST',
             data: ajaxData,
             success: function(response) {
                 console.log('AJAX response:', response);
+                console.log('Task position after update should be:', ajaxData.position);
                 
                 if (response.success) {
-                    // Get source column before moving the task
-                    var sourceColumn = taskElement.closest('.kanban-column-body');
-                    console.log('Source column found:', sourceColumn.length > 0);
-                    
-                    // Move task to new column
-                    var targetColumn = $('.kanban-column-body[data-status="' + newStatus + '"]');
-                    console.log('Target column found:', targetColumn.length > 0, 'for status:', newStatus);
-                    
-                    if (targetColumn.length === 0) {
-                        console.error('Target column not found for status:', newStatus);
-                        self.showNotification('Target column not found', 'error');
-                        return;
-                    }
-                    
-                    // Remove empty column message from target if it exists
-                    targetColumn.find('.empty-column').remove();
-                    
-                    // Update task data-status attribute
-                    taskElement.attr('data-status', newStatus);
-                    
-                    // Append task to target column
-                    taskElement.appendTo(targetColumn);
-                    console.log('Task moved to target column');
-                    
-                    // Check if source column is now empty and add empty message
-                    if (sourceColumn.find('.kanban-task').length === 0) {
-                        sourceColumn.append('<div class="empty-column"><p>No tasks in this column</p></div>');
-                    }
-                    
-                    // Update task counts
-                    self.updateTaskCounts();
+                    // Move task element to correct position
+                    self.moveTaskElement(taskElement, newStatus, dropInfo);
                     
                     self.showNotification('Task moved successfully', 'success');
                 } else {
@@ -241,13 +313,55 @@ var KanbanBoard = {
                     self.showNotification(response.message || 'Failed to move task', 'error');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                console.error('Response:', xhr.responseText);
                 self.showNotification('Error moving task', 'error');
             },
             complete: function() {
                 taskElement.removeClass('task-moving');
             }
         });
+    },
+
+    moveTaskElement: function(taskElement, newStatus, dropInfo) {
+        // Get source column before moving the task
+        var sourceColumn = taskElement.closest('.kanban-column-body');
+        
+        // Move task to new column
+        var targetColumn = $('.kanban-column-body[data-status="' + newStatus + '"]');
+        
+        if (targetColumn.length === 0) {
+            console.error('Target column not found for status:', newStatus);
+            this.showNotification('Target column not found', 'error');
+            return false;
+        }
+        
+        // Remove empty column message from target if it exists
+        targetColumn.find('.empty-column').remove();
+        
+        // Update task data-status attribute
+        taskElement.attr('data-status', newStatus);
+        
+        // Insert task at the correct position
+        if (dropInfo && dropInfo.insertBefore && dropInfo.insertBefore.length) {
+            taskElement.insertBefore(dropInfo.insertBefore);
+        } else {
+            // Insert at the end
+            targetColumn.append(taskElement);
+        }
+        
+        console.log('Task moved to target column at position');
+        
+        // Check if source column is now empty and add empty message
+        if (sourceColumn.find('.kanban-task').length === 0) {
+            sourceColumn.append('<div class="empty-column"><p>No tasks in this column</p></div>');
+        }
+        
+        // Update task counts
+        this.updateTaskCounts();
+        
+        return true;
     },
 
     updateTaskCounts: function() {

@@ -11,7 +11,7 @@ use common\modules\kanban\models\KanbanBoard;
 /* @var $categories array */
 
 $this->title = 'Kanban Board';
-$this->params['breadcrumbs'][] = $this->title;
+// $this->params['breadcrumbs'][] = $this->title;
 
 KanbanAsset::register($this);
 
@@ -42,11 +42,11 @@ $this->registerCss('
         right: 8px;
         width: 12px;
         height: 12px;
-        background: #007bff;
+        background: #ff5100ff;
         border-radius: 50%;
         animation: focusBlink 1.5s infinite;
         z-index: 5;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+        box-shadow: 0 0 8px rgba(255, 94, 0, 0.6);
     }
     
     .focus-indicator::before {
@@ -103,7 +103,7 @@ $statistics = KanbanBoard::getStatistics();
 ?>
 
 <div class="kanban-board">
-    <div class="kanban-header">
+    <div class="kanban-header" style="display:none;">
         <div class="header-top">
             <h1><?= Html::encode($this->title) ?></h1>
             <div class="header-actions">

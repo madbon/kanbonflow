@@ -181,7 +181,9 @@ $this->registerCss("
 }
 ");
 
-$deleteUrl = Url::to(['/taskmonitor/category/delete']);
+$baseDeleteUrl = Url::to(['/taskmonitor/category/delete']);
+$csrfToken = Yii::$app->request->csrfToken;
+$csrfParam = Yii::$app->request->csrfParam;
 $this->registerJs("
 $(document).on('click', '.delete-category', function(e) {
     e.preventDefault();
@@ -191,11 +193,26 @@ $(document).on('click', '.delete-category', function(e) {
         return;
     }
 
-    $.post('$deleteUrl', { id: id }, function(response) {
-        if (response.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + response.message);
+    var deleteUrl = '$baseDeleteUrl' + '?id=' + id;
+    var data = { 
+        '$csrfParam': '$csrfToken'
+    };
+
+    $.ajax({
+        url: deleteUrl,
+        type: 'POST',
+        data: data,
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX Error:', xhr.responseText);
+            alert('Failed to delete category. Please try again.');
         }
     });
 });

@@ -30,17 +30,24 @@ AppAsset::register($this);
 <header>
     <?php
     NavBar::begin([
-        'brandLabel' => Yii::$app->name,
+        'brandLabel' => "Tasks Viewer",
         'brandUrl' => Yii::$app->homeUrl,
         'options' => [
             'class' => 'navbar navbar-expand-md navbar-dark bg-dark fixed-top',
         ],
     ]);
     $menuItems = [
-        ['label' => 'Home', 'url' => ['/site/index']],
-        ['label' => 'Task Monitor', 'url' => ['/taskmonitor/default/index']],
+        // ['label' => 'Home', 'url' => ['/site/index']],
+        // ['label' => 'Task Monitor', 'url' => ['/taskmonitor/default']],
         ['label' => 'Kanban Board', 'url' => ['/kanban/board/index']],
         ['label' => 'Activity Log', 'url' => ['/activity-log/index']],
+        [
+            'label' => 'Settings',
+            'items' => [
+                ['label' => 'Manage Categories', 'url' => ['/taskmonitor/category/index']],
+                ['label' => 'Color Settings', 'url' => ['/taskmonitor/color-setting/index']],
+            ],
+        ],
     ];
     if (Yii::$app->user->isGuest) {
         $menuItems[] = ['label' => 'Login', 'url' => ['/site/login']];

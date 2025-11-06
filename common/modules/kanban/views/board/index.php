@@ -97,13 +97,115 @@ $this->registerCss('
         color: #007bff;
         font-weight: bold;
     }
+
+    /* Image Upload Styles */
+    .task-images-section {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .task-images-section h5 {
+        margin-bottom: 15px;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .image-upload-controls {
+        margin-bottom: 15px;
+        position: relative;
+    }
+
+    .clipboard-hint {
+        font-size: 0.85em;
+        color: #6c757d;
+        margin-left: 10px;
+    }
+
+    .upload-progress {
+        display: inline-block;
+        margin-left: 10px;
+        color: #007bff;
+        font-size: 0.9em;
+    }
+
+    .task-images-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .task-image-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        background: #f8f9fa;
+    }
+
+    .task-image-thumb {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 12px;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+
+    .task-image-thumb:hover {
+        transform: scale(1.05);
+    }
+
+    .image-info {
+        flex: 1;
+    }
+
+    .image-name {
+        font-weight: 500;
+        font-size: 0.9em;
+        color: #495057;
+        margin-bottom: 3px;
+    }
+
+    .image-size {
+        font-size: 0.8em;
+        color: #6c757d;
+    }
+
+    .image-delete-btn {
+        margin-left: 10px;
+        padding: 5px 8px;
+    }
+
+    /* Image fullscreen overlay */
+    .image-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+    }
+
+    .image-overlay img {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();
 ?>
 
 <div class="kanban-board">
-    <div class="kanban-header" style="display:none;">
+    <div class="kanban-header">
         <div class="header-top">
             <h1><?= Html::encode($this->title) ?></h1>
             <div class="header-actions">
@@ -542,6 +644,10 @@ $this->registerJs("
             addCommentUrl: '" . Url::to(['/taskmonitor/comment/add']) . "',
             editCommentUrl: '" . Url::to(['/taskmonitor/comment/edit']) . "',
             deleteCommentUrl: '" . Url::to(['/taskmonitor/comment/delete']) . "',
+            imageUploadUrl: '" . Url::to(['/taskmonitor/image/upload']) . "',
+            imageClipboardUrl: '" . Url::to(['/taskmonitor/image/upload-clipboard']) . "',
+            imageListUrl: '" . Url::to(['/taskmonitor/image/list']) . "',
+            imageDeleteUrl: '" . Url::to(['/taskmonitor/image/delete']) . "',
             csrfToken: '" . Yii::$app->request->csrfToken . "',
             csrfParam: '" . Yii::$app->request->csrfParam . "'
         });

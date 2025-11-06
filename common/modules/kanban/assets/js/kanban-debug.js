@@ -22,6 +22,10 @@ var KanbanBoard = {
         addCommentUrl: '',
         editCommentUrl: '',
         deleteCommentUrl: '',
+        imageUploadUrl: '',
+        imageClipboardUrl: '',
+        imageListUrl: '',
+        imageDeleteUrl: '',
         csrfToken: '',
         csrfParam: '_csrf'
     },
@@ -449,6 +453,12 @@ var KanbanBoard = {
                     
                     // Show action buttons
                     $('#editTaskFromDetails, #deleteTaskFromDetails').show().data('task-id', taskId);
+                    
+                    // Initialize image upload functionality
+                    self.initImageUpload(taskId);
+                    
+                    // Store task ID in modal for later use
+                    $('#taskDetailsModal').data('task-id', taskId);
                 } else {
                     self.showTaskDetailsError(response.message || 'Failed to load task details');
                 }
@@ -1642,6 +1652,349 @@ var KanbanBoard = {
                 localStorage.removeItem('kanban-focused-task');
             }
         }
+    },
+
+    /**
+     * Initialize image upload functionality
+     */
+    initImageUpload: function(taskId) {
+        var self = this;
+        
+        // Add image upload UI to task details modal
+        this.addImageUploadUI(taskId);
+        
+        // Bind file input change event
+        $('#imageFileInput').off('change').on('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                self.uploadImageFile(taskId, file);
+            }
+        });
+        
+        // Bind clipboard paste event
+        $(document).off('paste.imageUpload').on('paste.imageUpload', function(e) {
+            if ($('#taskDetailsModal').is(':visible')) {
+                var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        var blob = items[i].getAsFile();
+                        self.uploadImageFromClipboard(taskId, blob);
+                        break;
+                    }
+                }
+            }
+        });
+        
+        // Load existing images
+        this.loadTaskImages(taskId);
+        
+        // Initialize image viewing functionality
+        this.initImageView();
+    },
+
+    /**
+     * Add image upload UI to task details modal
+     */
+    addImageUploadUI: function(taskId) {
+        var imageUploadHtml = 
+            '<div class="task-images-section">' +
+                '<h5><i class="fa fa-paperclip"></i> Attachments</h5>' +
+                '<div class="image-upload-controls">' +
+                    '<input type="file" id="imageFileInput" accept="image/*" style="display:none">' +
+                    '<button type="button" class="btn btn-sm btn-primary" onclick="$(\'#imageFileInput\').click()">' +
+                        '<i class="fa fa-upload"></i> Browse Image' +
+                    '</button>' +
+                    '<span class="clipboard-hint"> or paste image from clipboard (Ctrl+V)</span>' +
+                '</div>' +
+                '<div id="taskImagesList" class="task-images-list"></div>' +
+            '</div>';
+        
+        // Add to task details modal if not already present
+        if ($('#taskDetailsModal .task-images-section').length === 0) {
+            $('#taskDetailsModal .modal-body').append(imageUploadHtml);
+        }
+    },
+
+    /**
+     * Upload image file
+     */
+    uploadImageFile: function(taskId, file) {
+        var self = this;
+        
+        if (!this.validateImageFile(file)) {
+            return;
+        }
+        
+        var formData = new FormData();
+        formData.append('image', file);
+        formData.append('taskId', taskId);
+        formData.append(this.config.csrfParam, this.config.csrfToken);
+        
+        this.showImageUploadProgress();
+        
+        $.ajax({
+            url: this.config.imageUploadUrl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                self.hideImageUploadProgress();
+                if (response.success) {
+                    self.showNotification('Image uploaded successfully!', 'success');
+                    self.addImageToList(response.image);
+                    self.updateTaskImageCount(taskId);
+                } else {
+                    self.showNotification('Upload failed: ' + response.message, 'error');
+                }
+            },
+            error: function() {
+                self.hideImageUploadProgress();
+                self.showNotification('Upload failed. Please try again.', 'error');
+            }
+        });
+    },
+
+    /**
+     * Upload image from clipboard
+     */
+    uploadImageFromClipboard: function(taskId, blob) {
+        var self = this;
+        
+        if (!blob || blob.type.indexOf('image') !== 0) {
+            return;
+        }
+        
+        // Convert blob to base64
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var imageData = e.target.result;
+            
+            var postData = {};
+            postData['taskId'] = taskId;
+            postData['imageData'] = imageData;
+            postData[self.config.csrfParam] = self.config.csrfToken;
+            
+            self.showImageUploadProgress();
+            
+            $.ajax({
+                url: self.config.imageClipboardUrl,
+                type: 'POST',
+                data: postData,
+                success: function(response) {
+                    self.hideImageUploadProgress();
+                    if (response.success) {
+                        self.showNotification('Image pasted successfully!', 'success');
+                        self.addImageToList(response.image);
+                        self.updateTaskImageCount(taskId);
+                    } else {
+                        self.showNotification('Upload failed: ' + response.message, 'error');
+                    }
+                },
+                error: function() {
+                    self.hideImageUploadProgress();
+                    self.showNotification('Upload failed. Please try again.', 'error');
+                }
+            });
+        };
+        reader.readAsDataURL(blob);
+    },
+
+    /**
+     * Load existing images for task
+     */
+    loadTaskImages: function(taskId) {
+        var self = this;
+        
+        $.ajax({
+            url: this.config.imageListUrl,
+            type: 'GET',
+            data: { taskId: taskId },
+            success: function(response) {
+                if (response.success) {
+                    $('#taskImagesList').empty();
+                    if (response.images.length === 0) {
+                        $('#taskImagesList').html('<p class="text-muted text-center">No images attached yet.</p>');
+                    } else {
+                        for (var i = 0; i < response.images.length; i++) {
+                            self.addImageToList(response.images[i]);
+                        }
+                    }
+                }
+            },
+            error: function() {
+                console.error('Failed to load task images');
+            }
+        });
+    },
+
+    /**
+     * Add image to the list display
+     */
+    addImageToList: function(image) {
+        // Remove "no images" message if it exists
+        $('#taskImagesList p.text-muted').remove();
+        
+        var imageHtml = 
+            '<div class="task-image-item" data-image-id="' + image.id + '">' +
+                '<img src="' + image.url + '" alt="' + image.original_name + '" class="task-image-thumb" />' +
+                '<div class="image-info">' +
+                    '<div class="image-name">' + image.original_name + '</div>' +
+                    '<div class="image-size">' + image.size + '</div>' +
+                '</div>' +
+                '<button type="button" class="btn btn-sm btn-danger image-delete-btn" data-image-id="' + image.id + '">' +
+                    '<i class="fa fa-trash"></i>' +
+                '</button>' +
+            '</div>';
+        
+        $('#taskImagesList').append(imageHtml);
+        
+        // Bind delete event for this image
+        this.bindImageDeleteEvent(image.id);
+    },
+
+    /**
+     * Bind delete event for image
+     */
+    bindImageDeleteEvent: function(imageId) {
+        var self = this;
+        
+        $('.image-delete-btn[data-image-id="' + imageId + '"]').off('click').on('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to delete this image?')) {
+                self.deleteTaskImage(imageId);
+            }
+        });
+    },
+
+    /**
+     * Delete task image
+     */
+    deleteTaskImage: function(imageId) {
+        var self = this;
+        
+        var postData = {};
+        postData['imageId'] = imageId;
+        postData[this.config.csrfParam] = this.config.csrfToken;
+        
+        $.ajax({
+            url: this.config.imageDeleteUrl,
+            type: 'POST',
+            data: postData,
+            success: function(response) {
+                if (response.success) {
+                    $('.task-image-item[data-image-id="' + imageId + '"]').remove();
+                    
+                    // Show "no images" message if no images left
+                    if ($('#taskImagesList .task-image-item').length === 0) {
+                        $('#taskImagesList').html('<p class="text-muted text-center">No images attached yet.</p>');
+                    }
+                    
+                    self.showNotification('Image deleted successfully!', 'success');
+                    // Update image count on task card
+                    var taskId = $('#taskDetailsModal').data('task-id');
+                    if (taskId) {
+                        self.updateTaskImageCount(taskId);
+                    }
+                } else {
+                    self.showNotification('Delete failed: ' + response.message, 'error');
+                }
+            },
+            error: function() {
+                self.showNotification('Delete failed. Please try again.', 'error');
+            }
+        });
+    },
+
+    /**
+     * Update task image count on task card
+     */
+    updateTaskImageCount: function(taskId) {
+        var imageCount = $('#taskImagesList .task-image-item').length;
+        var $taskCard = $('.kanban-task[data-task-id="' + taskId + '"]');
+        var $attachmentEl = $taskCard.find('.task-attachments');
+        
+        if (imageCount > 0) {
+            if ($attachmentEl.length === 0) {
+                $taskCard.find('.task-footer').append(
+                    '<div class="task-attachments"><i class="fa fa-paperclip"></i> ' + imageCount + '</div>'
+                );
+            } else {
+                $attachmentEl.html('<i class="fa fa-paperclip"></i> ' + imageCount);
+            }
+        } else {
+            $attachmentEl.remove();
+        }
+    },
+
+    /**
+     * Validate image file
+     */
+    validateImageFile: function(file) {
+        // Check file type
+        var allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (allowedTypes.indexOf(file.type) === -1) {
+            this.showNotification('Invalid file type. Only images are allowed.', 'error');
+            return false;
+        }
+        
+        // Check file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showNotification('File too large. Maximum size is 5MB.', 'error');
+            return false;
+        }
+        
+        return true;
+    },
+
+    /**
+     * Show image upload progress
+     */
+    showImageUploadProgress: function() {
+        $('.image-upload-controls').append(
+            '<div class="upload-progress"><i class="fa fa-spinner fa-spin"></i> Uploading...</div>'
+        );
+        $('.image-upload-controls button').prop('disabled', true);
+    },
+
+    /**
+     * Hide image upload progress
+     */
+    hideImageUploadProgress: function() {
+        $('.upload-progress').remove();
+        $('.image-upload-controls button').prop('disabled', false);
+    },
+
+    /**
+     * Initialize image view functionality
+     */
+    initImageView: function() {
+        var self = this;
+        
+        // Add image overlay to body if not exists
+        if ($('.image-overlay').length === 0) {
+            $('body').append('<div class="image-overlay"><img src="" alt="Full size image" /></div>');
+        }
+        
+        // Bind click event for image thumbnails
+        $(document).off('click.imageView', '.task-image-thumb').on('click.imageView', '.task-image-thumb', function(e) {
+            e.preventDefault();
+            var fullImageUrl = $(this).attr('src');
+            $('.image-overlay img').attr('src', fullImageUrl);
+            $('.image-overlay').fadeIn(300).css('display', 'flex');
+        });
+        
+        // Close overlay on click
+        $(document).off('click.imageOverlay', '.image-overlay').on('click.imageOverlay', '.image-overlay', function() {
+            $(this).fadeOut(300);
+        });
+        
+        // Close overlay on ESC key
+        $(document).off('keyup.imageOverlay').on('keyup.imageOverlay', function(e) {
+            if (e.keyCode === 27) { // ESC key
+                $('.image-overlay').fadeOut(300);
+            }
+        });
     },
 
     /**

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Task IDs</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Debug Task Emphasis Function</h1>
+    
+    <button onclick="testWithTaskId(11)">Test with Task ID 11</button>
+    <button onclick="testWithTaskId(12)">Test with Task ID 12</button>
+    <button onclick="testWithTaskId(999)">Test with Non-existent ID</button>
+    
+    <p>Open browser console to see debug output.</p>
+    
+    <div style="margin-top: 20px;">
+        <h3>Sample Task Cards for Testing:</h3>
+        <div class="kanban-task" data-task-id="11" style="border: 1px solid #ccc; padding: 10px; margin: 5px; background: #f9f9f9;">
+            Task 11 - Sample Task
+        </div>
+        <div class="kanban-task" data-task-id="12" style="border: 1px solid #ccc; padding: 10px; margin: 5px; background: #f9f9f9;">
+            Task 12 - Another Task
+        </div>
+    </div>
+    
+    <style>
+        .task-emphasized {
+            animation: taskEmphasize 2s ease-in-out;
+            transform-origin: center;
+            z-index: 1000;
+            position: relative;
+        }
+        
+        @keyframes taskEmphasize {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1);
+            }
+            25% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.4);
+                background-color: rgba(255, 193, 7, 0.15);
+                transform: scale(1.02);
+            }
+            50% { 
+                box-shadow: 0 0 30px 15px rgba(255, 193, 7, 0.3);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1.01);
+            }
+            75% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.2);
+                background-color: rgba(255, 193, 7, 0.05);
+                transform: scale(1.005);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+                background-color: transparent;
+                transform: scale(1);
+            }
+        }
+    </style>
+    
+    <script>
+        function testWithTaskId(taskId) {
+            console.log('=== Testing with Task ID: ' + taskId + ' ===');
+            
+            // Find the task card in the board
+            var taskCard = $('.kanban-task[data-task-id="' + taskId + '"]');
+            
+            console.log('Looking for task with selector: .kanban-task[data-task-id="' + taskId + '"]');
+            console.log('Found ' + taskCard.length + ' matching tasks');
+            
+            // Debug: Show all tasks on board
+            var allTasks = $('.kanban-task[data-task-id]');
+            console.log('All tasks on board:', allTasks.length);
+            allTasks.each(function(i, el) {
+                console.log('Task ' + i + ': ID=' + $(el).data('task-id'));
+            });
+            
+            if (taskCard.length === 0) {
+                console.warn('Task not found in board: ' + taskId);
+                alert('Task not found in the current board view');
+                return;
+            }
+            
+            console.log('Found task card, emphasizing...');
+            
+            // Add emphasis effect
+            taskCard.addClass('task-emphasized');
+            console.log('Added emphasis class to task: ' + taskId);
+            
+            // Remove emphasis after 2 seconds
+            setTimeout(function() {
+                taskCard.removeClass('task-emphasized');
+                console.log('Removed emphasis class from task: ' + taskId);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

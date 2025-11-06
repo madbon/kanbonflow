@@ -2179,7 +2179,7 @@ function renderDeadlineTasks(tasks) {
             deadlineText = '<span class="text-muted">' + daysUntilDeadline + ' days remaining</span>';
         }
         
-        html += '<div class="deadline-task-card" onclick="openTaskModal(' + task.id + ')">';
+        html += '<div class="deadline-task-card" onclick="emphasizeTaskInBoard(' + task.id + ')">';
         html += '    <div class="deadline-task-header">';
         html += '        <h6 class="deadline-task-title">' + htmlEscape(task.title) + '</h6>';
         html += '        <span class="deadline-task-priority ' + priorityClass + '">' + (task.priority || 'Medium') + '</span>';
@@ -2225,6 +2225,87 @@ function showDeadlineTasksError(message) {
             '<button class="btn btn-primary btn-sm" onclick="$(this).closest(\'.modal\').modal(\'hide\')">Close</button>' +
         '</div>'
     );
+}
+
+// Function to emphasize task in board when clicked from deadline tasks modal
+function emphasizeTaskInBoard(taskId) {
+    console.log('Emphasizing task in board: ' + taskId);
+    
+    // First, close the deadline tasks modal
+    $('#deadlineTasksModal').modal('hide');
+    
+    // Wait a bit for modal to close and DOM to settle
+    setTimeout(function() {
+        // Find the task card in the board
+        var taskCard = $('.kanban-task[data-task-id="' + taskId + '"]');
+        
+        console.log('Looking for task with selector: .kanban-task[data-task-id="' + taskId + '"]');
+        console.log('Found ' + taskCard.length + ' matching tasks');
+        
+        // Debug: Show all tasks on board
+        var allTasks = $('.kanban-task[data-task-id]');
+        console.log('All tasks on board:', allTasks.length);
+        allTasks.each(function(i, el) {
+            var id = $(el).data('task-id');
+            var status = $(el).data('status'); 
+            console.log('Task ' + i + ': ID=' + id + ', Status=' + status + ', Visible=' + $(el).is(':visible'));
+        });
+        
+        if (taskCard.length === 0) {
+            console.warn('Task not found in board: ' + taskId);
+            
+            // Try alternative selectors
+            var altTask1 = $('[data-task-id="' + taskId + '"]');
+            var altTask2 = $('.kanban-task').filter(function() {
+                return $(this).data('task-id') == taskId;
+            });
+            
+            console.log('Alternative selector 1 found: ' + altTask1.length);
+            console.log('Alternative selector 2 found: ' + altTask2.length);
+            
+            if (altTask1.length > 0) {
+                taskCard = altTask1.first();
+                console.log('Using alternative selector 1');
+            } else if (altTask2.length > 0) {
+                taskCard = altTask2.first();
+                console.log('Using alternative selector 2');
+            } else {
+                // Show a notification that the task couldn't be found
+                if (typeof showNotification === 'function') {
+                    showNotification('Task not found in the current board view', 'warning');
+                } else {
+                    alert('Task not found in the current board view');
+                }
+                return;
+            }
+        }
+        
+        console.log('Found task card, scrolling and emphasizing...');
+        
+        // Scroll to the task card with smooth animation
+        $('html, body').animate({
+            scrollTop: taskCard.offset().top - 100
+        }, 800, 'swing');
+        
+        // Add emphasis effect after a short delay to ensure scrolling starts
+        setTimeout(function() {
+            taskCard.addClass('task-emphasized');
+            console.log('Added emphasis class to task: ' + taskId);
+        }, 200);
+        
+        // Remove emphasis after 2 seconds
+        setTimeout(function() {
+            taskCard.removeClass('task-emphasized');
+            console.log('Removed emphasis class from task: ' + taskId);
+        }, 2200);
+        
+        // Also open the task modal after the emphasis effect for better UX
+        setTimeout(function() {
+            console.log('Opening task modal for: ' + taskId);
+            openTaskModal(taskId);
+        }, 1000);
+        
+    }, 300); // Wait for modal close animation
 }
 
 function htmlEscape(str) {

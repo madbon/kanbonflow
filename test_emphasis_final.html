@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Emphasis with Task 11</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        .kanban-task {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        
+        .task-emphasized {
+            animation: taskEmphasize 2s ease-in-out;
+            transform-origin: center;
+            z-index: 1000;
+            position: relative;
+        }
+        
+        @keyframes taskEmphasize {
+            0% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1);
+            }
+            25% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.4);
+                background-color: rgba(255, 193, 7, 0.15);
+                transform: scale(1.02);
+            }
+            50% { 
+                box-shadow: 0 0 30px 15px rgba(255, 193, 7, 0.3);
+                background-color: rgba(255, 193, 7, 0.1);
+                transform: scale(1.01);
+            }
+            75% { 
+                box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.2);
+                background-color: rgba(255, 193, 7, 0.05);
+                transform: scale(1.005);
+            }
+            100% { 
+                box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+                background-color: transparent;
+                transform: scale(1);
+            }
+        }
+        
+        .task-emphasized::before {
+            content: "";
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            animation: emphasisBorder 2s ease-in-out;
+            pointer-events: none;
+        }
+        
+        @keyframes emphasisBorder {
+            0%, 100% { 
+                opacity: 0;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 1;
+                transform: scale(1.01);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Emphasis Function</h1>
+    
+    <p>This simulates the kanban board environment:</p>
+    
+    <button onclick="emphasizeTaskInBoard(11)">Test with Task ID 11</button>
+    <button onclick="emphasizeTaskInBoard(12)">Test with Task ID 12</button>
+    <button onclick="emphasizeTaskInBoard(999)">Test with Non-existent ID</button>
+    
+    <div style="margin-top: 30px;">
+        <h3>Simulated Kanban Board:</h3>
+        <div class="kanban-task" data-task-id="11" data-status="pending">
+            <strong>Task 11 - Test Due Today 1</strong><br>
+            Status: Pending<br>
+            This task is due today for testing emphasis feature
+        </div>
+        <div class="kanban-task" data-task-id="12" data-status="ongoing">
+            <strong>Task 12 - Test Due Today 2</strong><br>
+            Status: Ongoing<br>
+            This task is also due today for testing emphasis feature
+        </div>
+    </div>
+    
+    <script>
+        // Function that simulates the emphasizeTaskInBoard function
+        function emphasizeTaskInBoard(taskId) {
+            console.log('Emphasizing task in board: ' + taskId);
+            
+            // Wait a bit to simulate modal closing
+            setTimeout(function() {
+                // Find the task card in the board
+                var taskCard = $('.kanban-task[data-task-id="' + taskId + '"]');
+                
+                console.log('Looking for task with selector: .kanban-task[data-task-id="' + taskId + '"]');
+                console.log('Found ' + taskCard.length + ' matching tasks');
+                
+                // Debug: Show all tasks on board
+                var allTasks = $('.kanban-task[data-task-id]');
+                console.log('All tasks on board:', allTasks.length);
+                allTasks.each(function(i, el) {
+                    var id = $(el).data('task-id');
+                    var status = $(el).data('status'); 
+                    console.log('Task ' + i + ': ID=' + id + ', Status=' + status + ', Visible=' + $(el).is(':visible'));
+                });
+                
+                if (taskCard.length === 0) {
+                    console.warn('Task not found in board: ' + taskId);
+                    
+                    // Try alternative selectors
+                    var altTask1 = $('[data-task-id="' + taskId + '"]');
+                    var altTask2 = $('.kanban-task').filter(function() {
+                        return $(this).data('task-id') == taskId;
+                    });
+                    
+                    console.log('Alternative selector 1 found: ' + altTask1.length);
+                    console.log('Alternative selector 2 found: ' + altTask2.length);
+                    
+                    if (altTask1.length > 0) {
+                        taskCard = altTask1.first();
+                        console.log('Using alternative selector 1');
+                    } else if (altTask2.length > 0) {
+                        taskCard = altTask2.first();
+                        console.log('Using alternative selector 2');
+                    } else {
+                        alert('Task not found in the current board view');
+                        return;
+                    }
+                }
+                
+                console.log('Found task card, scrolling and emphasizing...');
+                
+                // Scroll to the task card with smooth animation
+                $('html, body').animate({
+                    scrollTop: taskCard.offset().top - 100
+                }, 800, 'swing');
+                
+                // Add emphasis effect after a short delay to ensure scrolling starts
+                setTimeout(function() {
+                    taskCard.addClass('task-emphasized');
+                    console.log('Added emphasis class to task: ' + taskId);
+                }, 200);
+                
+                // Remove emphasis after 2 seconds
+                setTimeout(function() {
+                    taskCard.removeClass('task-emphasized');
+                    console.log('Removed emphasis class from task: ' + taskId);
+                }, 2200);
+                
+            }, 300); // Wait for modal close animation
+        }
+    </script>
+</body>
+</html>

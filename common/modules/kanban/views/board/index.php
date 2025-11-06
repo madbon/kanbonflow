@@ -500,6 +500,28 @@ $this->registerCss('
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         border-color: #007bff;
     }
+    
+    .deadline-task-card:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        background-color: #f8f9fa;
+    }
+    
+    .deadline-task-card::after {
+        content: "Click to locate in board";
+        position: absolute;
+        bottom: 8px;
+        right: 12px;
+        font-size: 11px;
+        color: #6c757d;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
+    
+    .deadline-task-card:hover::after {
+        opacity: 1;
+    }
 
     .deadline-task-header {
         display: flex;
@@ -623,6 +645,67 @@ $this->registerCss('
         
         .deadline-task-card {
             padding: 12px;
+        }
+    }
+    
+    /* Task Emphasis Effect for Deadline Tasks Click */
+    .task-emphasized {
+        animation: taskEmphasize 2s ease-in-out;
+        transform-origin: center;
+        z-index: 1000;
+        position: relative;
+    }
+    
+    @keyframes taskEmphasize {
+        0% { 
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+            background-color: rgba(255, 193, 7, 0.1);
+            transform: scale(1);
+        }
+        25% { 
+            box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.4);
+            background-color: rgba(255, 193, 7, 0.15);
+            transform: scale(1.02);
+        }
+        50% { 
+            box-shadow: 0 0 30px 15px rgba(255, 193, 7, 0.3);
+            background-color: rgba(255, 193, 7, 0.1);
+            transform: scale(1.01);
+        }
+        75% { 
+            box-shadow: 0 0 20px 10px rgba(255, 193, 7, 0.2);
+            background-color: rgba(255, 193, 7, 0.05);
+            transform: scale(1.005);
+        }
+        100% { 
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+            background-color: transparent;
+            transform: scale(1);
+        }
+    }
+    
+    /* Improve visibility of emphasized task */
+    .task-emphasized::before {
+        content: "";
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        animation: emphasisBorder 2s ease-in-out;
+        pointer-events: none;
+    }
+    
+    @keyframes emphasisBorder {
+        0%, 100% { 
+            opacity: 0;
+            transform: scale(1);
+        }
+        50% { 
+            opacity: 1;
+            transform: scale(1.01);
         }
     }
 ');

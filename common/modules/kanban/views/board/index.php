@@ -199,6 +199,107 @@ $this->registerCss('
         max-height: 90%;
         object-fit: contain;
     }
+
+    /* Task description styling - Professional & Clean Design */
+    .task-description {
+        margin: 20px 0;
+        padding: 0;
+        background: transparent;
+        border-radius: 8px;
+        position: relative;
+    }
+
+    .task-description h6 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 8px;
+        display: flex;
+        align-items: center;
+    }
+
+    .task-description h6:before {
+        content: "📝";
+        margin-right: 8px;
+        font-size: 16px;
+    }
+
+    .description-content {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 16px 20px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #495057;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        word-break: break-word;
+        max-width: 100%;
+        overflow-wrap: break-word;
+        min-height: 60px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+        position: relative;
+    }
+
+    .description-content:hover {
+        background: #ffffff;
+        border-color: #dee2e6;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .description-content em {
+        color: #6c757d;
+        font-style: italic;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 60px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 4px;
+        border: 2px dashed #dee2e6;
+    }
+
+    .description-content em:before {
+        content: "📄";
+        margin-right: 8px;
+        opacity: 0.6;
+    }
+
+    /* Enhanced typography for description content */
+    .description-content p {
+        margin-bottom: 12px;
+        line-height: 1.6;
+    }
+
+    .description-content p:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Responsive design for description */
+    @media (max-width: 768px) {
+        .description-content {
+            padding: 12px 16px;
+            font-size: 13px;
+        }
+        
+        .task-description h6 {
+            font-size: 13px;
+        }
+    }
+
+    /* Focus state for better accessibility */
+    .description-content:focus-within {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();

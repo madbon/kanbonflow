@@ -1,0 +1,97 @@
+# yii console commands
+/yii
+/yii_test
+/yii_test.bat
+
+# phpstorm project files
+.idea
+
+# netbeans project files
+nbproject
+
+# zend studio for eclipse project files
+.buildpath
+.project
+.settings
+
+# windows thumbnail cache
+Thumbs.db
+
+# composer vendor dir
+/vendor
+
+# composer itself is not needed
+composer.phar
+
+# Mac DS_Store Files
+.DS_Store
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/phpunit.xml
+
+# vagrant runtime
+/.vagrant
+
+# ignore generated files
+/frontend/web/index.php
+/frontend/web/index-test.php
+/frontend/web/robots.txt
+/backend/web/index.php
+/backend/web/index-test.php
+/backend/web/robots.txt
+
+# runtime files and caches
+/backend/runtime/
+/frontend/runtime/
+/console/runtime/
+/common/runtime/
+
+# assets
+/backend/web/assets/
+/frontend/web/assets/
+
+# uploads and user content
+/backend/web/uploads/
+/frontend/web/uploads/
+
+# local configuration files
+/common/config/main-local.php
+/common/config/params-local.php
+/common/config/test-local.php
+/backend/config/main-local.php
+/backend/config/params-local.php
+/backend/config/test-local.php
+/frontend/config/main-local.php
+/frontend/config/params-local.php
+/frontend/config/test-local.php
+/console/config/main-local.php
+/console/config/params-local.php
+
+# codeception
+/backend/tests/_output/
+/backend/tests/_support/_generated/
+/frontend/tests/_output/
+/frontend/tests/_support/_generated/
+/common/tests/_output/
+/common/tests/_support/_generated/
+
+# logs
+*.log
+
+# temporary files
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Claude AI files
+.claude/

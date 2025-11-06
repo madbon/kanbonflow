@@ -1,0 +1,404 @@
+<?php
+
+use yii\helpers\Html;
+use yii\helpers\Url;
+use common\modules\kanban\assets\KanbanAsset;
+use common\modules\kanban\models\KanbanBoard;
+
+/* @var $this yii\web\View */
+/* @var $columns common\modules\kanban\models\KanbanColumn[] */
+/* @var $tasks array */
+/* @var $categories array */
+
+$this->title = 'Kanban Board';
+$this->params['breadcrumbs'][] = $this->title;
+
+KanbanAsset::register($this);
+
+$statistics = KanbanBoard::getStatistics();
+?>
+
+<div class="kanban-board">
+    <div class="kanban-header">
+        <div class="header-top">
+            <h1><?= Html::encode($this->title) ?></h1>
+            <div class="header-actions">
+                <button class="btn btn-primary btn-add-task" data-toggle="modal" data-target="#addTaskModal">
+                    <i class="fa fa-plus"></i> Add Task
+                </button>
+                <button class="btn btn-secondary btn-add-column" data-toggle="modal" data-target="#addColumnModal">
+                    <i class="fa fa-columns"></i> Add Column
+                </button>
+            </div>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="kanban-stats">
+            <div class="stat-card stat-total">
+                <div class="stat-number"><?= $statistics['total'] ?></div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <?php foreach ($columns as $column): ?>
+                <div class="stat-card" style="border-left: 4px solid <?= $column->color ?>">
+                    <div class="stat-number"><?= count(isset($tasks[$column->status_key]) ? $tasks[$column->status_key] : []) ?></div>
+                    <div class="stat-label"><?= Html::encode($column->name) ?></div>
+                </div>
+            <?php endforeach; ?>
+            <div class="stat-card stat-overdue">
+                <div class="stat-number"><?= $statistics['overdue'] ?></div>
+                <div class="stat-label">Overdue</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kanban Board Columns -->
+    <div class="kanban-board-container">
+        <?php foreach ($columns as $column): ?>
+            <div class="kanban-column kanban-column-<?= str_replace('_', '-', $column->status_key) ?>" 
+                 data-status="<?= $column->status_key ?>" 
+                 data-column-id="<?= $column->id ?>">
+                <div class="kanban-column-header" style="border-bottom-color: <?= $column->color ?>">
+                    <i class="<?= $column->icon ?>"></i>
+                    <span class="column-title"><?= Html::encode($column->name) ?></span>
+                    <span class="task-count"><?= count(isset($tasks[$column->status_key]) ? $tasks[$column->status_key] : []) ?></span>
+                    
+                    <!-- Column Actions -->
+                    <div class="column-actions">
+                        <button class="btn-column-edit" data-column-id="<?= $column->id ?>" title="Edit Column">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <button class="btn-column-delete" data-column-id="<?= $column->id ?>" title="Delete Column">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="kanban-column-body" data-status="<?= $column->status_key ?>">
+                    <!-- Add Task Button for first column (To Do) -->
+                    <?php if ($column->status_key === 'pending'): ?>
+                        <div class="add-task-button">
+                            <button class="btn btn-outline-primary btn-add-task-quick" data-status="<?= $column->status_key ?>">
+                                <i class="fa fa-plus"></i> Add Task
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <?php $columnTasks = isset($tasks[$column->status_key]) ? $tasks[$column->status_key] : []; ?>
+                    <?php if (empty($columnTasks)): ?>
+                        <div class="empty-column">
+                            <p>No tasks in this column</p>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($columnTasks as $task): ?>
+                            <?php 
+                                $categoryColor = $task->category && $task->category->color ? $task->category->color : '#6c757d';
+                                $rgbColor = sscanf($categoryColor, "#%02x%02x%02x");
+                                $backgroundOpacity = 0.15; // Light background
+                                $borderOpacity = 1.0; // Full border
+                            ?>
+                            <div class="kanban-task <?= KanbanBoard::getPriorityClass($task->priority) ?>" 
+                                 data-task-id="<?= $task->id ?>" 
+                                 data-status="<?= $task->status ?>"
+                                 style="background-color: rgba(<?= $rgbColor[0] ?>, <?= $rgbColor[1] ?>, <?= $rgbColor[2] ?>, <?= $backgroundOpacity ?>); 
+                                        border-left-color: rgba(<?= $rgbColor[0] ?>, <?= $rgbColor[1] ?>, <?= $rgbColor[2] ?>, <?= $borderOpacity ?>);">
+                                
+                                <div class="task-header">
+                                    <div class="task-category" style="background-color: <?= $categoryColor ?>">
+                                        <?= Html::encode($task->category ? $task->category->name : 'No Category') ?>
+                                    </div>
+                                    <div class="task-priority priority-<?= $task->priority ?>">
+                                        <?= strtoupper($task->priority) ?>
+                                    </div>
+                                </div>
+                                
+                                <div class="task-content">
+                                    <h4 class="task-title"><?= Html::encode($task->title) ?></h4>
+                                    <?php if ($task->description): ?>
+                                        <p class="task-description"><?= Html::encode(substr($task->description, 0, 100)) ?><?= strlen($task->description) > 100 ? '...' : '' ?></p>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="task-footer">
+                                    <div class="task-deadline <?= $task->isOverdue() ? 'overdue' : '' ?>">
+                                        <i class="fa fa-clock-o"></i>
+                                        <?= date('M j, Y', $task->deadline) ?>
+                                    </div>
+                                    
+                                    <?php if ($task->assigned_to): ?>
+                                        <div class="task-assignee">
+                                            <i class="fa fa-user"></i>
+                                            User #<?= $task->assigned_to ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <?php if ($task->images): ?>
+                                        <div class="task-attachments">
+                                            <i class="fa fa-paperclip"></i>
+                                            <?= count($task->images) ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                
+                                <div class="task-actions">
+                                    <button class="btn-edit" data-task-id="<?= $task->id ?>" title="Edit Task">
+                                        <i class="fa fa-edit"></i>
+                                    </button>
+                                    <button class="btn-delete" data-task-id="<?= $task->id ?>" title="Delete Task">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div id="addTaskModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add New Task</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addTaskForm">
+                    <div class="form-group">
+                        <label for="taskTitle">Title *</label>
+                        <input type="text" class="form-control" id="taskTitle" name="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea class="form-control" id="taskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskCategory">Category *</label>
+                                <select class="form-control" id="taskCategory" name="category_id" required>
+                                    <option value="">Select Category</option>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?= $category->id ?>"><?= Html::encode($category->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskPriority">Priority</label>
+                                <select class="form-control" id="taskPriority" name="priority">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskDeadline">Deadline</label>
+                                <input type="datetime-local" class="form-control" id="taskDeadline" name="deadline">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskStatus">Status</label>
+                                <select class="form-control" id="taskStatus" name="status">
+                                    <?php foreach ($columns as $column): ?>
+                                        <option value="<?= $column->status_key ?>" <?= $column->status_key === 'pending' ? 'selected' : '' ?>>
+                                            <?= Html::encode($column->name) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" id="taskDefaultStatus" name="default_status" value="pending">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveTaskBtn">Add Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div id="editTaskModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Edit Task</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editTaskForm">
+                    <input type="hidden" id="editTaskId" name="id">
+                    
+                    <div class="form-group">
+                        <label for="editTaskTitle">Title *</label>
+                        <input type="text" class="form-control" id="editTaskTitle" name="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTaskDescription">Description</label>
+                        <textarea class="form-control" id="editTaskDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskCategory">Category *</label>
+                                <select class="form-control" id="editTaskCategory" name="category_id" required>
+                                    <option value="">Select Category</option>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?= $category->id ?>"><?= Html::encode($category->name) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskPriority">Priority</label>
+                                <select class="form-control" id="editTaskPriority" name="priority">
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
+                                    <option value="critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskDeadline">Deadline</label>
+                                <input type="datetime-local" class="form-control" id="editTaskDeadline" name="deadline">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskAssignedTo">Assigned To</label>
+                                <input type="text" class="form-control" id="editTaskAssignedTo" name="assigned_to" placeholder="Assign to...">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateTaskBtn">Update Task</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Column Modal -->
+<div id="addColumnModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add New Column</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addColumnForm">
+                    <div class="form-group">
+                        <label for="columnName">Column Name *</label>
+                        <input type="text" class="form-control" id="columnName" name="name" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="columnColor">Color</label>
+                                <input type="color" class="form-control" id="columnColor" name="color" value="#6c757d">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="columnIcon">Icon Class</label>
+                                <input type="text" class="form-control" id="columnIcon" name="icon" placeholder="fa fa-list" value="fa fa-list">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveColumnBtn">Add Column</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Column Modal -->
+<div id="editColumnModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Edit Column</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editColumnForm">
+                    <input type="hidden" id="editColumnId" name="id">
+                    
+                    <div class="form-group">
+                        <label for="editColumnName">Column Name *</label>
+                        <input type="text" class="form-control" id="editColumnName" name="name" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editColumnColor">Color</label>
+                                <input type="color" class="form-control" id="editColumnColor" name="color">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editColumnIcon">Icon Class</label>
+                                <input type="text" class="form-control" id="editColumnIcon" name="icon" placeholder="fa fa-list">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="updateColumnBtn">Update Column</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php
+$this->registerJs("
+    // Initialize Kanban Board
+    KanbanBoard.init({
+        updateTaskUrl: '" . Url::to(['update-task-status']) . "',
+        updatePositionUrl: '" . Url::to(['update-task-position']) . "',
+        addTaskUrl: '" . Url::to(['add-task']) . "',
+        addColumnUrl: '" . Url::to(['add-column']) . "',
+        editColumnUrl: '" . Url::to(['edit-column']) . "',
+        deleteColumnUrl: '" . Url::to(['delete-column']) . "',
+        getTaskUrl: '" . Url::to(['get-task']) . "',
+        editTaskUrl: '" . Url::to(['edit-task']) . "',
+        deleteTaskUrl: '" . Url::to(['delete-task']) . "',
+        csrfToken: '" . Yii::$app->request->csrfToken . "',
+        csrfParam: '" . Yii::$app->request->csrfParam . "'
+    });
+");
+?>

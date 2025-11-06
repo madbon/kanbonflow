@@ -1,9 +1,12 @@
-/* Kanban Board Styles */
+/* Kanban Board Styles - Full Width Layout */
 
 .kanban-board {
-    padding: 20px;
+    margin: -15px -15px 0 -15px; /* Override container padding */
+    padding: 15px;
     background-color: #f8f9fa;
     min-height: 100vh;
+    width: calc(100vw - 30px); /* Full viewport width minus small margins */
+    max-width: none;
 }
 
 .kanban-header {
@@ -80,6 +83,8 @@
     gap: 20px;
     overflow-x: auto;
     padding-bottom: 20px;
+    width: 100%;
+    max-width: none;
 }
 
 /* Kanban Columns */

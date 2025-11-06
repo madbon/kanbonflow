@@ -15,6 +15,18 @@ $this->params['breadcrumbs'][] = $this->title;
 
 KanbanAsset::register($this);
 
+// Add custom CSS for full-width layout
+$this->registerCss('
+    .container {
+        max-width: none !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    body {
+        overflow-x: auto;
+    }
+');
+
 $statistics = KanbanBoard::getStatistics();
 ?>
 

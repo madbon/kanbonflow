@@ -12,6 +12,7 @@ use common\modules\taskmonitor\models\TaskCategory;
 use common\modules\taskmonitor\models\TaskHistory;
 use common\modules\kanban\models\KanbanBoard;
 use common\modules\kanban\models\KanbanColumn;
+use Exception;
 
 /**
  * Board controller for the kanban module
@@ -605,7 +606,7 @@ class BoardController extends Controller
         
         try {
             // Create test category
-            $category = new \common\models\TaskCategory();
+            $category = new TaskCategory();
             $category->name = 'Test Category';
             $category->color = '#3498db';
             $category->description = 'Test category for debugging';
@@ -615,7 +616,7 @@ class BoardController extends Controller
             }
             
             // Create test task
-            $task = new \common\models\Task();
+            $task = new Task();
             $task->title = 'Test Task for Details Modal';
             $task->description = "This is a test task created to verify the task details modal functionality.\n\nIt includes:\n- Multiple lines\n- Priority settings\n- Category assignment\n- Deadline settings";
             $task->status = 'pending';

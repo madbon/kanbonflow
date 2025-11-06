@@ -40,6 +40,7 @@ AppAsset::register($this);
         ['label' => 'Home', 'url' => ['/site/index']],
         ['label' => 'Task Monitor', 'url' => ['/taskmonitor/default/index']],
         ['label' => 'Kanban Board', 'url' => ['/kanban/board/index']],
+        ['label' => 'Activity Log', 'url' => ['/activity-log/index']],
     ];
     if (Yii::$app->user->isGuest) {
         $menuItems[] = ['label' => 'Login', 'url' => ['/site/login']];

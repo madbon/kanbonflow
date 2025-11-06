@@ -20,6 +20,7 @@ use common\models\User;
  * @property string $description
  * @property string|null $ip_address
  * @property string|null $user_agent
+ * @property string|null $old_values
  * @property int $created_at
  *
  * @property Task $task
@@ -70,7 +71,7 @@ class TaskHistory extends ActiveRecord
         return [
             [['task_id', 'action_type', 'description'], 'required'],
             [['task_id', 'user_id', 'created_at'], 'integer'],
-            [['old_value', 'new_value', 'description', 'user_agent'], 'string'],
+            [['old_value', 'new_value', 'description', 'user_agent', 'old_values'], 'string'],
             [['action_type'], 'string', 'max' => 50],
             [['field_name'], 'string', 'max' => 100],
             [['ip_address'], 'string', 'max' => 45],
@@ -107,6 +108,7 @@ class TaskHistory extends ActiveRecord
             'description' => 'Description',
             'ip_address' => 'IP Address',
             'user_agent' => 'User Agent',
+            'old_values' => 'Old Values',
             'created_at' => 'Created At',
         ];
     }
@@ -295,5 +297,27 @@ class TaskHistory extends ActiveRecord
             ->orderBy(['created_at' => SORT_DESC])
             ->limit($limit)
             ->all();
+    }
+    
+    /**
+     * Get all available action types with labels
+     * @return array
+     */
+    public static function getActionTypes()
+    {
+        return [
+            self::ACTION_CREATED => 'Task Created',
+            self::ACTION_UPDATED => 'Task Updated',
+            self::ACTION_STATUS_CHANGED => 'Status Changed',
+            self::ACTION_POSITION_CHANGED => 'Position Changed',
+            self::ACTION_PRIORITY_CHANGED => 'Priority Changed',
+            self::ACTION_CATEGORY_CHANGED => 'Category Changed',
+            self::ACTION_DEADLINE_CHANGED => 'Deadline Changed',
+            self::ACTION_DELETED => 'Task Deleted',
+            self::ACTION_ASSIGNED => 'Task Assigned',
+            self::ACTION_UNASSIGNED => 'Task Unassigned',
+            self::ACTION_COMPLETED => 'Task Completed',
+            self::ACTION_RESTORED => 'Task Restored',
+        ];
     }
 }

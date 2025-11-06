@@ -189,6 +189,38 @@ $this->registerCss('
     transform-origin: center;
 }
 
+.activity-list-view .list-group-item {
+    border-left: 4px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.activity-list-view .list-group-item:hover {
+    border-left-color: #007bff;
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+}
+
+.activity-list-view .badge {
+    font-size: 0.75em;
+    margin-right: 0.5rem;
+}
+
+.activity-list-view .text-purple { color: #6f42c1 !important; }
+.activity-list-view .text-orange { color: #fd7e14 !important; }
+
+.activity-list-view details summary {
+    outline: none;
+    user-select: none;
+}
+
+.activity-list-view details[open] summary {
+    margin-bottom: 0.5rem;
+}
+
+.activity-list-view .gap-2 {
+    gap: 0.5rem !important;
+}
+
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -284,10 +316,31 @@ $this->registerCss('
             </div>
         </div>
         
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <?= Html::label('Display View', 'view_type', ['class' => 'form-label']) ?>
+                    <?= Html::dropDownList('view_type', $filters['view_type'], [
+                        'timeline' => 'Timeline View',
+                        'list' => 'List View'
+                    ], [
+                        'class' => 'form-control',
+                        'id' => 'view_type',
+                        'onchange' => 'this.form.submit();'
+                    ]) ?>
+                </div>
+            </div>
+        </div>
+        
         <div class="filter-actions">
             <?= Html::submitButton('Filter', ['class' => 'btn btn-primary']) ?>
             <?= Html::a('Clear Filters', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
-            <?= Html::a('Export CSV', ['export'] + $filters, ['class' => 'btn btn-success']) ?>
+            <?= Html::a('Export CSV', ['export'] + array_filter($filters), ['class' => 'btn btn-success']) ?>
+            <?= Html::a('<i class="fa fa-external-link-alt"></i> Export to List', ['export-table'] + array_filter($filters), [
+                'class' => 'btn btn-info',
+                'target' => '_blank',
+                'title' => 'Open activity list in new tab - Simple table format with Activity Details, Date & Time, and Category columns'
+            ]) ?>
             <?= Html::a('Generate Demo Data', ['demo'], ['class' => 'btn btn-warning']) ?>
         </div>
         
@@ -319,98 +372,192 @@ $this->registerCss('
         </div>
     <?php endif; ?>
 
-    <!-- Activity Timeline -->
+    <!-- Activity Display -->
     <div class="activity-timeline">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Activity Timeline</h5>
+            <h5 class="mb-0">
+                Activity <?= $viewType === 'list' ? 'List' : 'Timeline' ?>
+                <span class="badge badge-secondary ml-2"><?= ucfirst($viewType) ?> View</span>
+            </h5>
             <small class="text-muted">
                 Showing <?= $dataProvider->getCount() ?> of <?= $dataProvider->getTotalCount() ?> activities
             </small>
         </div>
         
-        <div class="activity-list">
-            <?php if ($dataProvider->getCount() > 0): ?>
-                <?php foreach ($dataProvider->getModels() as $activity): ?>
-                    <div class="activity-item">
-                        <div class="activity-icon <?= $activity->action_type ?>">
+        <?php if ($viewType === 'list'): ?>
+            <!-- List View -->
+            <div class="activity-list-view">
+                <?php if ($dataProvider->getCount() > 0): ?>
+                    <ul class="list-group list-group-flush">
+                        <?php foreach ($dataProvider->getModels() as $activity): ?>
                             <?php
                             $icons = [
-                                'created' => 'fa fa-plus',
-                                'updated' => 'fa fa-edit',
-                                'status_changed' => 'fa fa-exchange',
-                                'position_changed' => 'fa fa-arrows',
-                                'priority_changed' => 'fa fa-flag',
-                                'category_changed' => 'fa fa-folder',
-                                'deadline_changed' => 'fa fa-calendar',
-                                'deleted' => 'fa fa-trash',
-                                'completed' => 'fa fa-check',
-                                'assigned' => 'fa fa-user',
-                                'unassigned' => 'fa fa-user-times',
-                                'restored' => 'fa fa-undo',
+                                'created' => 'fa fa-plus text-success',
+                                'updated' => 'fa fa-edit text-info',
+                                'status_changed' => 'fa fa-exchange text-warning',
+                                'position_changed' => 'fa fa-arrows text-purple',
+                                'priority_changed' => 'fa fa-flag text-orange',
+                                'category_changed' => 'fa fa-folder text-primary',
+                                'deadline_changed' => 'fa fa-calendar text-danger',
+                                'deleted' => 'fa fa-trash text-danger',
+                                'completed' => 'fa fa-check text-success',
+                                'assigned' => 'fa fa-user text-info',
+                                'unassigned' => 'fa fa-user-times text-secondary',
+                                'restored' => 'fa fa-undo text-success',
                             ];
-                            $icon = isset($icons[$activity->action_type]) ? $icons[$activity->action_type] : 'fa fa-info';
+                            $icon = isset($icons[$activity->action_type]) ? $icons[$activity->action_type] : 'fa fa-info text-secondary';
                             ?>
-                            <i class="<?= $icon ?>"></i>
-                        </div>
-                        
-                        <div class="activity-content">
-                            <div class="activity-header">
-                                <h6 class="activity-title"><?= $activity->getActionTypeLabel() ?></h6>
-                                <small class="activity-time">
-                                    <?= Yii::$app->formatter->asRelativeTime($activity->created_at) ?>
-                                    <br>
-                                    <span class="text-muted"><?= Yii::$app->formatter->asDatetime($activity->created_at) ?></span>
-                                </small>
-                            </div>
-                            
-                            <div class="activity-description">
-                                <?= Html::encode($activity->description) ?>
-                            </div>
-                            
-                            <?php if ($activity->task): ?>
-                                <a href="<?= Url::to(['/kanban/board/index']) ?>" class="activity-task">
-                                    <i class="fa fa-tasks"></i> <?= Html::encode($activity->task->title) ?>
-                                </a>
-                            <?php endif; ?>
-                            
-                            <?php if ($activity->user): ?>
-                                <small class="text-muted d-block mt-1">
-                                    <i class="fa fa-user"></i> <?= Html::encode($activity->user->username) ?>
-                                </small>
-                            <?php endif; ?>
-                            
-                            <?php if ($activity->old_values): ?>
-                                <details class="mt-2">
-                                    <summary class="text-info" style="cursor: pointer;">
-                                        <small>View Changes</small>
-                                    </summary>
-                                    <div class="mt-1">
+                            <li class="list-group-item d-flex align-items-start py-3">
+                                <div class="me-3" style="margin-right: 1rem;">
+                                    <i class="<?= $icon ?>" style="font-size: 1.2em; width: 20px;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <h6 class="mb-1 fw-bold"><?= $activity->getActionTypeLabel() ?></h6>
                                         <small class="text-muted">
-                                            <?php 
-                                            $changes = json_decode($activity->old_values, true);
-                                            if ($changes && is_array($changes)):
-                                                foreach ($changes as $field => $oldValue):
-                                                    echo "<strong>" . ucfirst(str_replace('_', ' ', $field)) . ":</strong> ";
-                                                    echo Html::encode($oldValue) . " → ";
-                                                    echo Html::encode($activity->new_value) . "<br>";
-                                                endforeach;
-                                            endif;
-                                            ?>
+                                            <?= Yii::$app->formatter->asRelativeTime($activity->created_at) ?>
                                         </small>
                                     </div>
-                                </details>
-                            <?php endif; ?>
-                        </div>
+                                    
+                                    <p class="mb-2 text-muted"><?= Html::encode($activity->description) ?></p>
+                                    
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <?php if ($activity->task): ?>
+                                            <span class="badge bg-primary">
+                                                <i class="fa fa-tasks"></i> <?= Html::encode($activity->task->title) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($activity->user): ?>
+                                            <span class="badge bg-secondary">
+                                                <i class="fa fa-user"></i> <?= Html::encode($activity->user->username) ?>
+                                            </span>
+                                        <?php endif; ?>
+                                        
+                                        <small class="text-muted">
+                                            <?= Yii::$app->formatter->asDatetime($activity->created_at) ?>
+                                        </small>
+                                    </div>
+                                    
+                                    <?php if ($activity->old_values): ?>
+                                        <details class="mt-2">
+                                            <summary class="text-info" style="cursor: pointer; font-size: 0.9em;">
+                                                <small>View Changes</small>
+                                            </summary>
+                                            <div class="mt-1 ms-3">
+                                                <small class="text-muted">
+                                                    <?php 
+                                                    $changes = json_decode($activity->old_values, true);
+                                                    if ($changes && is_array($changes)):
+                                                        foreach ($changes as $field => $oldValue):
+                                                            echo "<strong>" . ucfirst(str_replace('_', ' ', $field)) . ":</strong> ";
+                                                            echo Html::encode($oldValue) . " → ";
+                                                            echo Html::encode($activity->new_value) . "<br>";
+                                                        endforeach;
+                                                    endif;
+                                                    ?>
+                                                </small>
+                                            </div>
+                                        </details>
+                                    <?php endif; ?>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <div class="text-center py-5">
+                        <i class="fa fa-history fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No activities found</h5>
+                        <p class="text-muted">Try adjusting your filter criteria to see more results.</p>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="text-center py-5">
-                    <i class="fa fa-history fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No activities found</h5>
-                    <p class="text-muted">Try adjusting your filter criteria to see more results.</p>
-                </div>
-            <?php endif; ?>
-        </div>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <!-- Timeline View -->
+            <div class="activity-list">
+                <?php if ($dataProvider->getCount() > 0): ?>
+                    <?php foreach ($dataProvider->getModels() as $activity): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon <?= $activity->action_type ?>">
+                                <?php
+                                $icons = [
+                                    'created' => 'fa fa-plus',
+                                    'updated' => 'fa fa-edit',
+                                    'status_changed' => 'fa fa-exchange',
+                                    'position_changed' => 'fa fa-arrows',
+                                    'priority_changed' => 'fa fa-flag',
+                                    'category_changed' => 'fa fa-folder',
+                                    'deadline_changed' => 'fa fa-calendar',
+                                    'deleted' => 'fa fa-trash',
+                                    'completed' => 'fa fa-check',
+                                    'assigned' => 'fa fa-user',
+                                    'unassigned' => 'fa fa-user-times',
+                                    'restored' => 'fa fa-undo',
+                                ];
+                                $icon = isset($icons[$activity->action_type]) ? $icons[$activity->action_type] : 'fa fa-info';
+                                ?>
+                                <i class="<?= $icon ?>"></i>
+                            </div>
+                            
+                            <div class="activity-content">
+                                <div class="activity-header">
+                                    <h6 class="activity-title"><?= $activity->getActionTypeLabel() ?></h6>
+                                    <small class="activity-time">
+                                        <?= Yii::$app->formatter->asRelativeTime($activity->created_at) ?>
+                                        <br>
+                                        <span class="text-muted"><?= Yii::$app->formatter->asDatetime($activity->created_at) ?></span>
+                                    </small>
+                                </div>
+                                
+                                <div class="activity-description">
+                                    <?= Html::encode($activity->description) ?>
+                                </div>
+                                
+                                <?php if ($activity->task): ?>
+                                    <a href="<?= Url::to(['/kanban/board/index']) ?>" class="activity-task">
+                                        <i class="fa fa-tasks"></i> <?= Html::encode($activity->task->title) ?>
+                                    </a>
+                                <?php endif; ?>
+                                
+                                <?php if ($activity->user): ?>
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fa fa-user"></i> <?= Html::encode($activity->user->username) ?>
+                                    </small>
+                                <?php endif; ?>
+                                
+                                <?php if ($activity->old_values): ?>
+                                    <details class="mt-2">
+                                        <summary class="text-info" style="cursor: pointer;">
+                                            <small>View Changes</small>
+                                        </summary>
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                <?php 
+                                                $changes = json_decode($activity->old_values, true);
+                                                if ($changes && is_array($changes)):
+                                                    foreach ($changes as $field => $oldValue):
+                                                        echo "<strong>" . ucfirst(str_replace('_', ' ', $field)) . ":</strong> ";
+                                                        echo Html::encode($oldValue) . " → ";
+                                                        echo Html::encode($activity->new_value) . "<br>";
+                                                    endforeach;
+                                                endif;
+                                                ?>
+                                            </small>
+                                        </div>
+                                    </details>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="text-center py-5">
+                        <i class="fa fa-history fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No activities found</h5>
+                        <p class="text-muted">Try adjusting your filter criteria to see more results.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         
         <?php if ($dataProvider->getTotalCount() > $dataProvider->getCount()): ?>
             <div class="card-footer">
@@ -470,6 +617,28 @@ $this->registerJs('
         $("#date_to").val(today.toISOString().split("T")[0]);
         
         $(".filter-form").submit();
+    });
+    
+    // Add confirmation for Export to List
+    $("a[href*=\'export-table\']").on("click", function(e) {
+        var activityCount = <?= $dataProvider->getTotalCount() ?>;
+        if (activityCount > 100) {
+            if (!confirm("You are about to export " + activityCount + " activities. This may take a moment to load. Continue?")) {
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+    
+    // Show loading indicator for export
+    $("a[href*=\'export-table\']").on("click", function() {
+        var $btn = $(this);
+        var originalText = $btn.text();
+        $btn.html("<i class=\'fa fa-spinner fa-spin\'></i> Opening...");
+        
+        setTimeout(function() {
+            $btn.html(originalText);
+        }, 3000);
     });
 ');
 ?>

@@ -55,18 +55,25 @@ class ActivityLogController extends Controller
         $actionType = $request->get('action_type');
         $taskId = $request->get('task_id');
         $userId = $request->get('user_id');
+        $viewType = $request->get('view_type', 'timeline'); // default to timeline view
         
         // Build query
         $query = TaskHistory::find()
             ->with(['task', 'user'])
             ->orderBy(['created_at' => SORT_DESC]);
         
-        // Apply date filters
+        // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {
-            $query->andWhere(['>=', 'created_at', $dateFrom . ' 00:00:00']);
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
+            // Debug: log the conversion
+            \Yii::info("Date filter FROM: $dateFrom -> $fromTimestamp (" . date('Y-m-d H:i:s', $fromTimestamp) . ")", 'activity-log');
         }
         if ($dateTo) {
-            $query->andWhere(['<=', 'created_at', $dateTo . ' 23:59:59']);
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'created_at', $toTimestamp]);
+            // Debug: log the conversion  
+            \Yii::info("Date filter TO: $dateTo -> $toTimestamp (" . date('Y-m-d H:i:s', $toTimestamp) . ")", 'activity-log');
         }
         
         // Apply other filters
@@ -109,12 +116,14 @@ class ActivityLogController extends Controller
             'actionTypes' => $actionTypes,
             'tasks' => $tasks,
             'statistics' => $statistics,
+            'viewType' => $viewType,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
                 'action_type' => $actionType,
                 'task_id' => $taskId,
                 'user_id' => $userId,
+                'view_type' => $viewType,
             ],
         ]);
     }
@@ -139,12 +148,14 @@ class ActivityLogController extends Controller
             ->with(['task', 'user'])
             ->orderBy(['created_at' => SORT_DESC]);
         
-        // Apply same filters as index
+        // Apply same filters as index (convert date strings to timestamps)
         if ($dateFrom) {
-            $query->andWhere(['>=', 'created_at', $dateFrom . ' 00:00:00']);
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
         }
         if ($dateTo) {
-            $query->andWhere(['<=', 'created_at', $dateTo . ' 23:59:59']);
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'created_at', $toTimestamp]);
         }
         if ($actionType) {
             $query->andWhere(['action_type' => $actionType]);
@@ -201,12 +212,14 @@ class ActivityLogController extends Controller
     {
         $query = TaskHistory::find();
         
-        // Apply date filters
+        // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {
-            $query->andWhere(['>=', 'created_at', $dateFrom . ' 00:00:00']);
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
         }
         if ($dateTo) {
-            $query->andWhere(['<=', 'created_at', $dateTo . ' 23:59:59']);
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'created_at', $toTimestamp]);
         }
         
         $totalActivities = $query->count();
@@ -234,10 +247,12 @@ class ActivityLogController extends Controller
             ->limit(5);
             
         if ($dateFrom) {
-            $mostActiveTasks->andWhere(['>=', 'created_at', $dateFrom . ' 00:00:00']);
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $mostActiveTasks->andWhere(['>=', 'created_at', $fromTimestamp]);
         }
         if ($dateTo) {
-            $mostActiveTasks->andWhere(['<=', 'created_at', $dateTo . ' 23:59:59']);
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $mostActiveTasks->andWhere(['<=', 'created_at', $toTimestamp]);
         }
         
         $mostActiveTasks = $mostActiveTasks->all();
@@ -251,9 +266,11 @@ class ActivityLogController extends Controller
         
         foreach ($period as $date) {
             $dateStr = $date->format('Y-m-d');
+            $dayStart = strtotime($dateStr . ' 00:00:00');
+            $dayEnd = strtotime($dateStr . ' 23:59:59');
             $count = TaskHistory::find()
-                ->andWhere(['>=', 'created_at', $dateStr . ' 00:00:00'])
-                ->andWhere(['<=', 'created_at', $dateStr . ' 23:59:59'])
+                ->andWhere(['>=', 'created_at', $dayStart])
+                ->andWhere(['<=', 'created_at', $dayEnd])
                 ->count();
                 
             $dailyActivity[] = [
@@ -353,7 +370,66 @@ class ActivityLogController extends Controller
             }
         }
         
-        Yii::$app->session->setFlash('success', "Successfully generated {$generated} demo activity records.");
+        Yii::$app->session->setFlash('success', "Successfully generated {$generated} demo activity records for testing the new Export to List feature.");
         return $this->redirect(['index']);
+    }
+    
+    /**
+     * Export activities as a simple table view
+     * @return mixed
+     */
+    public function actionExportTable()
+    {
+        $request = Yii::$app->request;
+        
+        // Get filter parameters
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        $actionType = $request->get('action_type');
+        $taskId = $request->get('task_id');
+        $userId = $request->get('user_id');
+        
+        // Build query
+        $query = TaskHistory::find()
+            ->with(['task', 'task.category', 'user'])
+            ->orderBy(['created_at' => SORT_DESC]);
+        
+        // Apply date filters (convert date strings to timestamps)
+        if ($dateFrom) {
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
+        }
+        if ($dateTo) {
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'created_at', $toTimestamp]);
+        }
+        
+        // Apply other filters
+        if ($actionType) {
+            $query->andWhere(['action_type' => $actionType]);
+        }
+        if ($taskId) {
+            $query->andWhere(['task_id' => $taskId]);
+        }
+        if ($userId) {
+            $query->andWhere(['user_id' => $userId]);
+        }
+        
+        // Get all activities (limit to prevent memory issues)
+        $activities = $query->limit(500)->all();
+        
+        // Set the layout to blank for clean table display
+        $this->layout = false;
+        
+        return $this->render('export-table', [
+            'activities' => $activities,
+            'filters' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'action_type' => $actionType,
+                'task_id' => $taskId,
+                'user_id' => $userId,
+            ],
+        ]);
     }
 }

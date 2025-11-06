@@ -416,6 +416,52 @@ $this->registerCss('
         transform: translateY(-3px);
         box-shadow: 0 6px 20px rgba(0,0,0,0.15);
     }
+
+    /* Special styling for "Due Today" card */
+    .stat-due_today {
+        background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
+        border-left-width: 5px !important;
+        position: relative;
+    }
+
+    .stat-due_today:before {
+        content: "📅";
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        font-size: 16px;
+        opacity: 0.3;
+    }
+
+    .stat-due_today .stat-number {
+        font-size: 28px !important;
+        font-weight: 800 !important;
+    }
+
+    .stat-due_today .stat-label {
+        font-weight: 700 !important;
+        text-transform: none !important;
+        font-size: 13px !important;
+    }
+
+    .stat-due_today:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(255, 87, 34, 0.25);
+    }
+
+    /* Animation for due today card */
+    .stat-due_today:hover .stat-number {
+        animation: todayPulse 0.6s ease-in-out;
+    }
+
+    @keyframes todayPulse {
+        0%, 100% { 
+            transform: scale(1); 
+        }
+        50% { 
+            transform: scale(1.1); 
+        }
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();

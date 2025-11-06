@@ -41,6 +41,7 @@ class KanbanBoard
     {
         $now = time();
         $today = strtotime('today');
+        $tomorrow = strtotime('tomorrow');
         
         // Get deadline ranges from task_color_settings
         $settings = TaskColorSettings::getActiveSettings();
@@ -48,6 +49,22 @@ class KanbanBoard
         
         // Base query for non-completed tasks
         $baseQuery = Task::find()->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
+        
+        // Add special "Due Today" category first
+        $todayQuery = clone $baseQuery;
+        $todayCount = $todayQuery->andWhere(['>=', 'deadline', $today])
+            ->andWhere(['<', 'deadline', $tomorrow])
+            ->count();
+            
+        $statistics['due_today'] = [
+            'count' => $todayCount,
+            'name' => 'Due Today',
+            'color' => '#FF5722',
+            'icon' => 'fa-calendar-day',
+            'display_name' => 'Due Today',
+            'days_before_deadline' => 0,
+            'sort_order' => 0,
+        ];
         
         foreach ($settings as $index => $setting) {
             $key = strtolower(str_replace(' ', '_', $setting->name));
@@ -81,6 +98,14 @@ class KanbanBoard
                 'sort_order' => $setting->sort_order,
             ];
         }
+        
+        // Sort statistics by sort_order
+        uasort($statistics, function($a, $b) {
+            if ($a['sort_order'] == $b['sort_order']) {
+                return 0;
+            }
+            return ($a['sort_order'] < $b['sort_order']) ? -1 : 1;
+        });
         
         return $statistics;
     }

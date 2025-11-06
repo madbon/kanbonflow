@@ -722,6 +722,7 @@ var KanbanBoard = {
         $('#editTaskDescription').val(task.description);
         $('#editTaskCategory').val(task.category_id);
         $('#editTaskPriority').val(task.priority);
+        $('#editTaskStatus').val(task.status);
         $('#editTaskDeadline').val(task.deadline);
         $('#editTaskAssignedTo').val(task.assigned_to);
         
@@ -739,6 +740,7 @@ var KanbanBoard = {
         }
         
         console.log('NEW VERSION: Updating task with data:', formData);
+        console.log('NEW VERSION: Status field value:', $('#editTaskStatus').val());
         
         $.ajax({
             url: self.config.editTaskUrl,

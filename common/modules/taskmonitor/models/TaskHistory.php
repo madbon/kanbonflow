@@ -270,10 +270,10 @@ class TaskHistory extends ActiveRecord
         $history->field_name = $fieldName;
         $history->old_value = is_array($oldValue) ? json_encode($oldValue) : (string)$oldValue;
         $history->new_value = is_array($newValue) ? json_encode($newValue) : (string)$newValue;
-        $history->user_id = $userId !== null ? $userId : (Yii::$app->user->isGuest ? null : Yii::$app->user->id);
+        $history->user_id = $userId !== null ? $userId : (Yii::$app->has('user') && !Yii::$app->user->isGuest ? Yii::$app->user->id : null);
         
-        // Capture request information if available
-        if (Yii::$app->request) {
+        // Capture request information if available (only for web requests)
+        if (Yii::$app->has('request') && Yii::$app->request && Yii::$app->request instanceof \yii\web\Request) {
             $history->ip_address = Yii::$app->request->userIP;
             $history->user_agent = Yii::$app->request->userAgent;
         }

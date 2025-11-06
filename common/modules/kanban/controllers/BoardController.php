@@ -444,6 +444,7 @@ class BoardController extends Controller
         $description = Yii::$app->request->post('description');
         $categoryId = Yii::$app->request->post('category_id');
         $priority = Yii::$app->request->post('priority');
+        $status = Yii::$app->request->post('status');
         $deadline = Yii::$app->request->post('deadline');
         $assignedTo = Yii::$app->request->post('assigned_to');
         
@@ -452,15 +453,32 @@ class BoardController extends Controller
             return ['success' => false, 'message' => 'Task not found'];
         }
 
+        // Validate status if provided
+        if ($status) {
+            $validColumn = KanbanColumn::find()
+                ->where(['status_key' => $status, 'is_active' => 1])
+                ->exists();
+            if (!$validColumn) {
+                return ['success' => false, 'message' => 'Invalid status: ' . $status];
+            }
+        }
+
+        // Store original status for logging
+        $originalStatus = $task->status;
+        
         $task->title = $title;
         $task->description = $description;
         $task->category_id = $categoryId;
         $task->priority = $priority;
+        $task->status = $status;
         $task->assigned_to = $assignedTo;
         
         if ($deadline) {
             $task->deadline = strtotime($deadline);
         }
+
+        // Log the status change for debugging
+        \Yii::info("Task {$id} status update: '{$originalStatus}' -> '{$status}'", 'kanban');
 
         if ($task->save()) {
             return [

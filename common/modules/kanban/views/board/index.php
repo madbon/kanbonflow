@@ -919,6 +919,21 @@ $statistics = KanbanBoard::getStatistics();
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
+                                <label for="editTaskStatus">Status</label>
+                                <select class="form-control" id="editTaskStatus" name="status">
+                                    <?php foreach ($columns as $column): ?>
+                                        <option value="<?= $column->status_key ?>">
+                                            <?= Html::encode($column->name) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
                                 <label for="editTaskAssignedTo">Assigned To</label>
                                 <input type="text" class="form-control" id="editTaskAssignedTo" name="assigned_to" placeholder="Assign to...">
                             </div>

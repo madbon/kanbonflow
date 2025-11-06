@@ -1,8 +1,8 @@
 /**
- * Kanban Board JavaScript - Updated Version
- * Updated: 2025-11-06 with edit/delete functionality
+ * Kanban Board JavaScript - DEBUG Version
+ * Updated: 2025-11-06 - Fixed template literals syntax
  */
-console.log('Kanban-updated.js loaded - NEW VERSION with edit functionality');
+console.log('Kanban-debug.js loaded - FIXED VERSION without template literals');
 
 var KanbanBoard = {
     config: {

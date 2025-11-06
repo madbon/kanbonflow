@@ -386,6 +386,11 @@
     color: #333;
 }
 
+.btn-history:hover {
+    background: #17a2b8 !important;
+    color: white !important;
+}
+
 .btn-edit:hover {
     background: #007bff !important;
     color: white !important;

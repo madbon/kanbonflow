@@ -155,6 +155,9 @@ $statistics = KanbanBoard::getStatistics();
                                 </div>
                                 
                                 <div class="task-actions">
+                                    <button class="btn-history" data-task-id="<?= $task->id ?>" title="View History">
+                                        <i class="fa fa-history"></i>
+                                    </button>
                                     <button class="btn-edit" data-task-id="<?= $task->id ?>" title="Edit Task">
                                         <i class="fa fa-edit"></i>
                                     </button>
@@ -432,22 +435,30 @@ $statistics = KanbanBoard::getStatistics();
 
 <?php
 $this->registerJs("
-    // Initialize Kanban Board
-    KanbanBoard.init({
-        updateTaskUrl: '" . Url::to(['update-task-status']) . "',
-        updatePositionUrl: '" . Url::to(['update-task-position']) . "',
-        updateColumnPositionUrl: '" . Url::to(['update-column-position']) . "',
-        addTaskUrl: '" . Url::to(['add-task']) . "',
-        addColumnUrl: '" . Url::to(['add-column']) . "',
-        editColumnUrl: '" . Url::to(['edit-column']) . "',
-        deleteColumnUrl: '" . Url::to(['delete-column']) . "',
-        getTaskUrl: '" . Url::to(['get-task']) . "',
-        getTaskDetailsUrl: '" . Url::to(['get-task-details']) . "',
-        editTaskUrl: '" . Url::to(['edit-task']) . "',
-        deleteTaskUrl: '" . Url::to(['delete-task']) . "',
-        csrfToken: '" . Yii::$app->request->csrfToken . "',
-        csrfParam: '" . Yii::$app->request->csrfParam . "'
-    });
+    // Initialize Kanban Board - DEBUG VERSION
+    console.log('About to initialize KanbanBoard...');
+    try {
+        KanbanBoard.init({
+            updateTaskUrl: '" . Url::to(['update-task-status']) . "',
+            updatePositionUrl: '" . Url::to(['update-task-position']) . "',
+            updateColumnPositionUrl: '" . Url::to(['update-column-position']) . "',
+            addTaskUrl: '" . Url::to(['add-task']) . "',
+            addColumnUrl: '" . Url::to(['add-column']) . "',
+            editColumnUrl: '" . Url::to(['edit-column']) . "',
+            deleteColumnUrl: '" . Url::to(['delete-column']) . "',
+            getTaskUrl: '" . Url::to(['get-task']) . "',
+            getTaskDetailsUrl: '" . Url::to(['get-task-details']) . "',
+            getTaskHistoryUrl: '" . Url::to(['get-task-history']) . "',
+            editTaskUrl: '" . Url::to(['edit-task']) . "',
+            deleteTaskUrl: '" . Url::to(['delete-task']) . "',
+            csrfToken: '" . Yii::$app->request->csrfToken . "',
+            csrfParam: '" . Yii::$app->request->csrfParam . "'
+        });
+        console.log('KanbanBoard initialized successfully');
+    } catch (error) {
+        console.error('Error initializing KanbanBoard:', error);
+        alert('KanbanBoard initialization error: ' + error.message);
+    }
 
     // Debug function to test position updates
     window.debugPositions = function() {
@@ -490,3 +501,5 @@ $this->registerJs("
     };
 ");
 ?>
+
+<?= $this->render('_task_history_modal') ?>

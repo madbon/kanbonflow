@@ -17,7 +17,7 @@ class KanbanAsset extends AssetBundle
         // Use new JavaScript file to bypass cache
         $timestamp = time();
         $this->js = [
-            'js/kanban-updated.js?v=' . $timestamp . '&bust=' . mt_rand(),
+            'js/kanban-debug.js?v=' . $timestamp . '&bust=' . mt_rand(),
         ];
         $this->css = [
             'css/kanban.css?v=' . $timestamp,

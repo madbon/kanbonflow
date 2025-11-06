@@ -9,6 +9,7 @@ use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\modules\taskmonitor\models\Task;
 use common\modules\taskmonitor\models\TaskCategory;
+use common\modules\taskmonitor\models\TaskHistory;
 use common\modules\kanban\models\KanbanBoard;
 use common\modules\kanban\models\KanbanColumn;
 
@@ -28,7 +29,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -154,6 +155,9 @@ class BoardController extends Controller
         $this->updateTaskPositions($task, $oldStatus, $newPosition, $status);
 
         if ($task->save()) {
+            // Log the change to history
+            $this->logTaskPositionChange($task, $oldStatus, $oldPosition, $status, $newPosition);
+            
             return [
                 'success' => true, 
                 'message' => 'Task position updated successfully',
@@ -711,5 +715,116 @@ class BoardController extends Controller
                 ]
             );
         }
+    }
+
+    /**
+     * Log task position/status changes to history
+     */
+    private function logTaskPositionChange($task, $oldStatus, $oldPosition, $newStatus, $newPosition)
+    {
+        $columnNames = $this->getColumnNames();
+        
+        // Log status change if different
+        if ($oldStatus !== $newStatus) {
+            $oldColumnName = isset($columnNames[$oldStatus]) ? $columnNames[$oldStatus] : ucfirst($oldStatus);
+            $newColumnName = isset($columnNames[$newStatus]) ? $columnNames[$newStatus] : ucfirst($newStatus);
+            
+            TaskHistory::log(
+                $task->id,
+                TaskHistory::ACTION_STATUS_CHANGED,
+                "Task moved from \"{$oldColumnName}\" to \"{$newColumnName}\"",
+                'status',
+                $oldStatus,
+                $newStatus
+            );
+            
+            // Special log for completion
+            if ($newStatus === Task::STATUS_COMPLETED) {
+                TaskHistory::log(
+                    $task->id,
+                    TaskHistory::ACTION_COMPLETED,
+                    "Task was completed"
+                );
+            }
+        }
+        
+        // Log position change if within same column
+        if ($oldStatus === $newStatus && $oldPosition != $newPosition) {
+            TaskHistory::log(
+                $task->id,
+                TaskHistory::ACTION_POSITION_CHANGED,
+                "Task position changed from " . ($oldPosition + 1) . " to " . ($newPosition + 1) . " within \"{$columnNames[$newStatus]}\" column",
+                'position',
+                $oldPosition,
+                $newPosition
+            );
+        }
+    }
+    
+    /**
+     * Get column names for history logging
+     */
+    private function getColumnNames()
+    {
+        static $columnNames = null;
+        
+        if ($columnNames === null) {
+            $columnNames = [];
+            $columns = KanbanColumn::getActiveColumns();
+            foreach ($columns as $column) {
+                $columnNames[$column->status_key] = $column->name;
+            }
+        }
+        
+        return $columnNames;
+    }
+
+    /**
+     * Get task history via AJAX
+     */
+    public function actionGetTaskHistory()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $taskId = Yii::$app->request->get('taskId');
+        if (!$taskId) {
+            return ['success' => false, 'message' => 'Task ID is required'];
+        }
+        
+        $task = Task::findOne($taskId);
+        if (!$task) {
+            return ['success' => false, 'message' => 'Task not found'];
+        }
+        
+        $history = TaskHistory::getTaskHistory($taskId, 50);
+        $historyData = [];
+        
+        foreach ($history as $entry) {
+            $historyData[] = [
+                'id' => $entry->id,
+                'action_type' => $entry->action_type,
+                'action_label' => $entry->getActionTypeLabel(),
+                'description' => $entry->description,
+                'field_name' => $entry->field_name,
+                'old_value' => $entry->old_value,
+                'new_value' => $entry->new_value,
+                'user_name' => $entry->getUserDisplayName(),
+                'formatted_date' => $entry->getFormattedDate(),
+                'relative_time' => $entry->getRelativeTime(),
+                'icon' => $entry->getActionIcon(),
+                'css_class' => $entry->getActionCssClass(),
+                'created_at' => $entry->created_at,
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'task' => [
+                'id' => $task->id,
+                'title' => $task->title,
+            ],
+            'history' => $historyData,
+            'total_count' => count($historyData)
+        ];
     }
 }

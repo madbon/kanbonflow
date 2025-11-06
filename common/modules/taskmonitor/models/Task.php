@@ -5,6 +5,7 @@ namespace common\modules\taskmonitor\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\behaviors\BlameableBehavior;
+use common\modules\taskmonitor\behaviors\TaskHistoryBehavior;
 
 /**
  * This is the model class for table "tasks".
@@ -64,6 +65,7 @@ class Task extends \yii\db\ActiveRecord
                 },
                 'updatedByAttribute' => false,
             ],
+            TaskHistoryBehavior::className(),
         ];
     }
 
@@ -125,6 +127,16 @@ class Task extends \yii\db\ActiveRecord
     public function getImages()
     {
         return $this->hasMany(TaskImage::className(), ['task_id' => 'id'])->orderBy(['sort_order' => SORT_ASC]);
+    }
+
+    /**
+     * Gets query for [[History]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getHistory()
+    {
+        return $this->hasMany(TaskHistory::className(), ['task_id' => 'id'])->orderBy(['created_at' => SORT_DESC]);
     }
 
     /**

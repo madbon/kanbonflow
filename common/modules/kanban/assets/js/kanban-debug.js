@@ -18,6 +18,10 @@ var KanbanBoard = {
         getTaskHistoryUrl: '',
         editTaskUrl: '',
         deleteTaskUrl: '',
+        getCommentsUrl: '',
+        addCommentUrl: '',
+        editCommentUrl: '',
+        deleteCommentUrl: '',
         csrfToken: '',
         csrfParam: '_csrf'
     },
@@ -569,10 +573,43 @@ var KanbanBoard = {
                         '</div>' +
                     '</div>' +
                 '</div>' +
+                
+                // Comments Section
+                '<div class="row mt-4">' +
+                    '<div class="col-12">' +
+                        '<div class="comments-section">' +
+                            '<h6><i class="fa fa-comments"></i> Comments</h6>' +
+                            '<div class="add-comment-form mb-3">' +
+                                '<div class="form-group">' +
+                                    '<textarea class="form-control" id="newCommentText" rows="3" placeholder="Add a comment..."></textarea>' +
+                                '</div>' +
+                                '<div class="d-flex justify-content-between align-items-center">' +
+                                    '<div class="form-check">' +
+                                        '<input type="checkbox" class="form-check-input" id="isInternalComment">' +
+                                        '<label class="form-check-label" for="isInternalComment">' +
+                                            '<small>Internal comment (team only)</small>' +
+                                        '</label>' +
+                                    '</div>' +
+                                    '<button type="button" class="btn btn-primary btn-sm" id="addCommentBtn" data-task-id="' + task.id + '">' +
+                                        '<i class="fa fa-paper-plane"></i> Add Comment' +
+                                    '</button>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div id="commentsContainer">' +
+                                '<div class="text-center text-muted">' +
+                                    '<i class="fa fa-spinner fa-spin"></i> Loading comments...' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
             '</div>';
         
         $('#taskDetailsContent').html(html);
         $('#taskDetailsModalLabel').text(task.title);
+        
+        // Load comments after rendering task details
+        self.loadTaskComments(task.id);
     },
 
     showTaskDetailsError: function(message) {
@@ -1132,6 +1169,291 @@ var KanbanBoard = {
         
         $('#taskHistoryContent').html(html);
         $('#taskHistoryModalLabel').html('<i class="fa fa-history"></i> Task History (' + history.length + ' entries)');
+    },
+
+    /**
+     * Load comments for a task
+     */
+    loadTaskComments: function(taskId) {
+        var self = this;
+        
+        console.log('Loading comments for task:', taskId);
+        console.log('Available config:', self.config);
+        
+        var ajaxData = { taskId: taskId };
+        
+        // For GET requests, CSRF token is usually not needed, but let's include it anyway
+        var csrfToken = self.config.csrfToken;
+        var csrfParam = self.config.csrfParam || '_csrf';
+        
+        if (!csrfToken) {
+            csrfToken = $('meta[name="csrf-token"]').attr('content');
+            csrfParam = $('meta[name="csrf-param"]').attr('content') || '_csrf';
+        }
+        
+        if (csrfParam && csrfToken) {
+            ajaxData[csrfParam] = csrfToken;
+        }
+        
+        $.ajax({
+            url: self.config.getCommentsUrl,
+            method: 'GET',
+            data: ajaxData,
+            success: function(response) {
+                console.log('Comments response:', response);
+                if (response.success) {
+                    self.renderComments(response.comments);
+                } else {
+                    console.error('Failed to load comments:', response.message);
+                    $('#commentsContainer').html('<div class="alert alert-warning">Failed to load comments: ' + response.message + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error loading comments:', xhr, status, error);
+                $('#commentsContainer').html('<div class="alert alert-danger">Error loading comments. Please try again.</div>');
+            }
+        });
+        
+        // Bind add comment event
+        $(document).off('click', '#addCommentBtn').on('click', '#addCommentBtn', function() {
+            var taskId = $(this).data('task-id');
+            var comment = $('#newCommentText').val().trim();
+            var isInternal = $('#isInternalComment').is(':checked');
+            
+            if (!comment) {
+                alert('Please enter a comment.');
+                return;
+            }
+            
+            console.log('Add comment button clicked - TaskId:', taskId, 'Comment:', comment, 'Internal:', isInternal);
+            self.addComment(taskId, comment, null, isInternal);
+        });
+    },
+
+    /**
+     * Render comments list
+     */
+    renderComments: function(comments) {
+        var html = '';
+        
+        if (comments.length === 0) {
+            html = '<div class="text-center text-muted py-3"><i class="fa fa-comment-slash"></i><br>No comments yet. Be the first to comment!</div>';
+        } else {
+            comments.forEach(function(comment) {
+                html += '<div class="comment-item mb-3" data-comment-id="' + comment.id + '">';
+                html += '<div class="comment-header d-flex align-items-center mb-2">';
+                html += '<div class="comment-avatar me-2">';
+                html += '<div class="avatar-circle">' + comment.user_avatar + '</div>';
+                html += '</div>';
+                html += '<div class="comment-meta flex-grow-1">';
+                html += '<strong>' + comment.user_name + '</strong>';
+                if (comment.is_internal) {
+                    html += ' <span class="badge badge-secondary badge-sm">Internal</span>';
+                }
+                html += '<br><small class="text-muted">' + comment.relative_time + '</small>';
+                html += '</div>';
+                html += '<div class="comment-actions">';
+                if (comment.can_edit) {
+                    html += '<button class="btn btn-link btn-sm edit-comment-btn" data-comment-id="' + comment.id + '"><i class="fa fa-edit"></i></button>';
+                }
+                if (comment.can_delete) {
+                    html += '<button class="btn btn-link btn-sm text-danger delete-comment-btn" data-comment-id="' + comment.id + '"><i class="fa fa-trash"></i></button>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '<div class="comment-content">' + comment.comment.replace(/\n/g, '<br>') + '</div>';
+                
+                // Add replies if any
+                if (comment.replies && comment.replies.length > 0) {
+                    html += '<div class="comment-replies ml-4 mt-2">';
+                    comment.replies.forEach(function(reply) {
+                        html += '<div class="comment-item reply mb-2" data-comment-id="' + reply.id + '">';
+                        html += '<div class="comment-header d-flex align-items-center mb-1">';
+                        html += '<div class="comment-avatar me-2">';
+                        html += '<div class="avatar-circle small">' + reply.user_avatar + '</div>';
+                        html += '</div>';
+                        html += '<div class="comment-meta flex-grow-1">';
+                        html += '<strong>' + reply.user_name + '</strong>';
+                        if (reply.is_internal) {
+                            html += ' <span class="badge badge-secondary badge-sm">Internal</span>';
+                        }
+                        html += '<br><small class="text-muted">' + reply.relative_time + '</small>';
+                        html += '</div>';
+                        if (reply.can_delete) {
+                            html += '<div class="comment-actions">';
+                            html += '<button class="btn btn-link btn-sm text-danger delete-comment-btn" data-comment-id="' + reply.id + '"><i class="fa fa-trash"></i></button>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
+                        html += '<div class="comment-content">' + reply.comment.replace(/\n/g, '<br>') + '</div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                
+                html += '<div class="comment-reply-section mt-2" style="display: none;">';
+                html += '<textarea class="form-control form-control-sm reply-text" rows="2" placeholder="Write a reply..."></textarea>';
+                html += '<div class="mt-1">';
+                html += '<button class="btn btn-primary btn-sm add-reply-btn" data-parent-id="' + comment.id + '">Reply</button>';
+                html += '<button class="btn btn-secondary btn-sm cancel-reply-btn">Cancel</button>';
+                html += '</div>';
+                html += '</div>';
+                
+                html += '<div class="comment-footer mt-1">';
+                html += '<button class="btn btn-link btn-sm reply-toggle-btn" data-comment-id="' + comment.id + '">Reply</button>';
+                html += '</div>';
+                
+                html += '</div>';
+            });
+        }
+        
+        $('#commentsContainer').html(html);
+        
+        // Bind comment events
+        this.bindCommentEvents();
+    },
+
+    /**
+     * Bind comment-related events
+     */
+    bindCommentEvents: function() {
+        var self = this;
+        
+        // Reply toggle
+        $(document).off('click', '.reply-toggle-btn').on('click', '.reply-toggle-btn', function() {
+            var commentId = $(this).data('comment-id');
+            var replySection = $(this).closest('.comment-item').find('.comment-reply-section');
+            replySection.toggle();
+            $(this).text(replySection.is(':visible') ? 'Cancel' : 'Reply');
+        });
+        
+        // Cancel reply
+        $(document).off('click', '.cancel-reply-btn').on('click', '.cancel-reply-btn', function() {
+            var replySection = $(this).closest('.comment-reply-section');
+            replySection.hide();
+            replySection.closest('.comment-item').find('.reply-toggle-btn').text('Reply');
+        });
+        
+        // Add reply
+        $(document).off('click', '.add-reply-btn').on('click', '.add-reply-btn', function() {
+            var parentId = $(this).data('parent-id');
+            var replyText = $(this).closest('.comment-reply-section').find('.reply-text').val().trim();
+            var taskId = $('#addCommentBtn').data('task-id');
+            
+            if (!replyText) {
+                alert('Please enter a reply.');
+                return;
+            }
+            
+            self.addComment(taskId, replyText, parentId, false);
+        });
+        
+        // Delete comment
+        $(document).off('click', '.delete-comment-btn').on('click', '.delete-comment-btn', function() {
+            if (confirm('Are you sure you want to delete this comment?')) {
+                var commentId = $(this).data('comment-id');
+                self.deleteComment(commentId);
+            }
+        });
+    },
+
+    /**
+     * Add a new comment
+     */
+    addComment: function(taskId, comment, parentId, isInternal) {
+        var self = this;
+        
+        console.log('Adding comment with CSRF token:', self.config.csrfToken);
+        console.log('CSRF param:', self.config.csrfParam);
+        
+        var data = {
+            taskId: taskId,
+            comment: comment,
+            isInternal: isInternal ? 1 : 0  // Convert boolean to 1/0 for Yii2
+        };
+        
+        if (parentId) {
+            data.parentId = parentId;
+        }
+        
+        // Get CSRF token from meta tags as fallback
+        var csrfToken = self.config.csrfToken;
+        var csrfParam = self.config.csrfParam || '_csrf';
+        
+        if (!csrfToken) {
+            csrfToken = $('meta[name="csrf-token"]').attr('content');
+            csrfParam = $('meta[name="csrf-param"]').attr('content') || '_csrf';
+        }
+        
+        console.log('Final CSRF token to use:', csrfToken);
+        console.log('Final CSRF param to use:', csrfParam);
+        
+        if (csrfParam && csrfToken) {
+            data[csrfParam] = csrfToken;
+        }
+        
+        console.log('AJAX data being sent:', data);
+        
+        $.ajax({
+            url: self.config.addCommentUrl,
+            method: 'POST',
+            data: data,
+            success: function(response) {
+                console.log('Add comment response:', response);
+                if (response.success) {
+                    // Clear the form
+                    $('#newCommentText').val('');
+                    $('#isInternalComment').prop('checked', false);
+                    $('.reply-text').val('');
+                    $('.comment-reply-section').hide();
+                    $('.reply-toggle-btn').text('Reply');
+                    
+                    // Reload comments
+                    self.loadTaskComments(taskId);
+                } else {
+                    alert('Failed to add comment: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error adding comment:', xhr, status, error);
+                console.error('Response text:', xhr.responseText);
+                alert('Failed to add comment: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Failed to add comment'));
+            }
+        });
+    },
+
+    /**
+     * Delete a comment
+     */
+    deleteComment: function(commentId) {
+        var self = this;
+        var taskId = $('#addCommentBtn').data('task-id');
+        
+        var data = {
+            commentId: commentId
+        };
+        
+        if (self.config.csrfParam && self.config.csrfToken) {
+            data[self.config.csrfParam] = self.config.csrfToken;
+        }
+        
+        $.ajax({
+            url: self.config.deleteCommentUrl,
+            method: 'POST',
+            data: data,
+            success: function(response) {
+                if (response.success) {
+                    // Reload comments
+                    self.loadTaskComments(taskId);
+                } else {
+                    alert('Failed to delete comment: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error deleting comment:', xhr, status, error);
+                alert('Error deleting comment. Please try again.');
+            }
+        });
     }
 };
 

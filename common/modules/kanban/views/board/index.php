@@ -152,6 +152,15 @@ $statistics = KanbanBoard::getStatistics();
                                             <?= count($task->images) ?>
                                         </div>
                                     <?php endif; ?>
+                                    
+                                    <?php 
+                                    $commentCount = $task->getCommentsCount();
+                                    if ($commentCount > 0): ?>
+                                        <div class="task-comments">
+                                            <i class="fa fa-comments"></i>
+                                            <?= $commentCount ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                                 
                                 <div class="task-actions">
@@ -451,6 +460,10 @@ $this->registerJs("
             getTaskHistoryUrl: '" . Url::to(['get-task-history']) . "',
             editTaskUrl: '" . Url::to(['edit-task']) . "',
             deleteTaskUrl: '" . Url::to(['delete-task']) . "',
+            getCommentsUrl: '" . Url::to(['/taskmonitor/comment/get-comments']) . "',
+            addCommentUrl: '" . Url::to(['/taskmonitor/comment/add']) . "',
+            editCommentUrl: '" . Url::to(['/taskmonitor/comment/edit']) . "',
+            deleteCommentUrl: '" . Url::to(['/taskmonitor/comment/delete']) . "',
             csrfToken: '" . Yii::$app->request->csrfToken . "',
             csrfParam: '" . Yii::$app->request->csrfParam . "'
         });

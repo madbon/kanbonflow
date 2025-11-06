@@ -140,6 +140,38 @@ class Task extends \yii\db\ActiveRecord
     }
 
     /**
+     * Gets query for [[Comments]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getComments()
+    {
+        return $this->hasMany(TaskComment::className(), ['task_id' => 'id'])->orderBy(['created_at' => SORT_DESC]);
+    }
+
+    /**
+     * Get comments count for this task
+     * @return int
+     */
+    public function getCommentsCount()
+    {
+        return $this->hasMany(TaskComment::className(), ['task_id' => 'id'])->count();
+    }
+
+    /**
+     * Get recent comments (last 5)
+     * @return TaskComment[]
+     */
+    public function getRecentComments()
+    {
+        return $this->hasMany(TaskComment::className(), ['task_id' => 'id'])
+            ->with(['user'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->limit(5)
+            ->all();
+    }
+
+    /**
      * Get status options
      */
     public static function getStatusOptions()

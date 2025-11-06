@@ -241,13 +241,9 @@ $this->registerCss('
 
 <div class="activity-log-index">
     <!-- Header -->
-    <div class="activity-log-header">
-        <h1 class="mb-3"><?= Html::encode($this->title) ?></h1>
-        <p class="mb-0">Track all activities and changes made to your tasks. Filter by date range, action type, or specific tasks to find exactly what you\'re looking for.</p>
-    </div>
 
     <!-- Statistics -->
-    <div class="stats-grid">
+    <!-- <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-number"><?= $statistics['total_activities'] ?></div>
             <div class="stat-label">Total Activities</div>
@@ -261,7 +257,7 @@ $this->registerCss('
                 </div>
             <?php endif; ?>
         <?php endforeach; ?>
-    </div>
+    </div> -->
 
     <!-- Filters -->
     <div class="filter-panel">
@@ -335,13 +331,11 @@ $this->registerCss('
         <div class="filter-actions">
             <?= Html::submitButton('Filter', ['class' => 'btn btn-primary']) ?>
             <?= Html::a('Clear Filters', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
-            <?= Html::a('Export CSV', ['export'] + array_filter($filters), ['class' => 'btn btn-success']) ?>
             <?= Html::a('<i class="fa fa-external-link-alt"></i> Export to List', ['export-table'] + array_filter($filters), [
                 'class' => 'btn btn-info',
                 'target' => '_blank',
                 'title' => 'Open activity list in new tab - Simple table format with Activity Details, Date & Time, and Category columns'
             ]) ?>
-            <?= Html::a('Generate Demo Data', ['demo'], ['class' => 'btn btn-warning']) ?>
         </div>
         
         <?php ActiveForm::end(); ?>

@@ -1348,6 +1348,48 @@ var KanbanBoard = {
             self.addComment(taskId, replyText, parentId, false);
         });
         
+        // Edit comment
+        $(document).off('click', '.edit-comment-btn').on('click', '.edit-comment-btn', function() {
+            var commentId = $(this).data('comment-id');
+            var commentItem = $(this).closest('.comment-item');
+            var commentContent = commentItem.find('.comment-content');
+            var currentText = commentContent.text();
+            
+            // Replace content with editable textarea
+            var editForm = '<div class="edit-comment-form">' +
+                '<textarea class="form-control edit-comment-text" rows="3">' + currentText + '</textarea>' +
+                '<div class="mt-2">' +
+                    '<button class="btn btn-primary btn-sm save-comment-btn" data-comment-id="' + commentId + '">Save</button>' +
+                    '<button class="btn btn-secondary btn-sm cancel-edit-btn">Cancel</button>' +
+                '</div>' +
+            '</div>';
+            
+            commentContent.hide();
+            commentContent.after(editForm);
+            $(this).hide(); // Hide edit button while editing
+        });
+        
+        // Save edited comment
+        $(document).off('click', '.save-comment-btn').on('click', '.save-comment-btn', function() {
+            var commentId = $(this).data('comment-id');
+            var newText = $(this).closest('.edit-comment-form').find('.edit-comment-text').val().trim();
+            
+            if (!newText) {
+                alert('Please enter a comment.');
+                return;
+            }
+            
+            self.editComment(commentId, newText);
+        });
+        
+        // Cancel comment editing
+        $(document).off('click', '.cancel-edit-btn').on('click', '.cancel-edit-btn', function() {
+            var commentItem = $(this).closest('.comment-item');
+            commentItem.find('.edit-comment-form').remove();
+            commentItem.find('.comment-content').show();
+            commentItem.find('.edit-comment-btn').show();
+        });
+
         // Delete comment
         $(document).off('click', '.delete-comment-btn').on('click', '.delete-comment-btn', function() {
             if (confirm('Are you sure you want to delete this comment?')) {
@@ -1423,6 +1465,50 @@ var KanbanBoard = {
     },
 
     /**
+     * Edit a comment
+     */
+    editComment: function(commentId, newText) {
+        var self = this;
+        var taskId = $('#addCommentBtn').data('task-id');
+        
+        var data = {
+            commentId: commentId,
+            comment: newText
+        };
+        
+        // Get CSRF token from meta tags as fallback
+        var csrfToken = self.config.csrfToken;
+        var csrfParam = self.config.csrfParam || '_csrf';
+        
+        if (!csrfToken) {
+            csrfToken = $('meta[name="csrf-token"]').attr('content');
+            csrfParam = $('meta[name="csrf-param"]').attr('content') || '_csrf';
+        }
+        
+        if (csrfParam && csrfToken) {
+            data[csrfParam] = csrfToken;
+        }
+        
+        $.ajax({
+            url: self.config.editCommentUrl,
+            method: 'POST',
+            data: data,
+            success: function(response) {
+                if (response.success) {
+                    // Reload comments to show updated content
+                    self.loadTaskComments(taskId);
+                } else {
+                    alert('Failed to edit comment: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX error editing comment:', xhr, status, error);
+                alert('Error editing comment. Please try again.');
+            }
+        });
+    },
+
+    /**
      * Delete a comment
      */
     deleteComment: function(commentId) {
@@ -1433,8 +1519,17 @@ var KanbanBoard = {
             commentId: commentId
         };
         
-        if (self.config.csrfParam && self.config.csrfToken) {
-            data[self.config.csrfParam] = self.config.csrfToken;
+        // Get CSRF token from meta tags as fallback
+        var csrfToken = self.config.csrfToken;
+        var csrfParam = self.config.csrfParam || '_csrf';
+        
+        if (!csrfToken) {
+            csrfToken = $('meta[name="csrf-token"]').attr('content');
+            csrfParam = $('meta[name="csrf-param"]').attr('content') || '_csrf';
+        }
+        
+        if (csrfParam && csrfToken) {
+            data[csrfParam] = csrfToken;
         }
         
         $.ajax({

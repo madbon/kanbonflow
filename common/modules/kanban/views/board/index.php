@@ -60,7 +60,7 @@ $statistics = KanbanBoard::getStatistics();
             <div class="kanban-column kanban-column-<?= str_replace('_', '-', $column->status_key) ?>" 
                  data-status="<?= $column->status_key ?>" 
                  data-column-id="<?= $column->id ?>">
-                <div class="kanban-column-header" style="border-bottom-color: <?= $column->color ?>">
+                <div class="kanban-column-header" draggable="true" style="border-bottom-color: <?= $column->color ?>">
                     <i class="<?= $column->icon ?>"></i>
                     <span class="column-title"><?= Html::encode($column->name) ?></span>
                     <span class="task-count"><?= count(isset($tasks[$column->status_key]) ? $tasks[$column->status_key] : []) ?></span>
@@ -424,6 +424,7 @@ $this->registerJs("
     KanbanBoard.init({
         updateTaskUrl: '" . Url::to(['update-task-status']) . "',
         updatePositionUrl: '" . Url::to(['update-task-position']) . "',
+        updateColumnPositionUrl: '" . Url::to(['update-column-position']) . "',
         addTaskUrl: '" . Url::to(['add-task']) . "',
         addColumnUrl: '" . Url::to(['add-column']) . "',
         editColumnUrl: '" . Url::to(['edit-column']) . "',

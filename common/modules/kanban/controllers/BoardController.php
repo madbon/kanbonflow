@@ -28,7 +28,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -634,6 +634,82 @@ class BoardController extends Controller
             
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Update column position via AJAX
+     */
+    public function actionUpdateColumnPosition()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $columnId = Yii::$app->request->post('columnId');
+        $newPosition = (int) Yii::$app->request->post('position');
+        
+        if (!$columnId || $newPosition < 0) {
+            return ['success' => false, 'message' => 'Invalid column ID or position'];
+        }
+        
+        $column = KanbanColumn::findOne($columnId);
+        if (!$column) {
+            return ['success' => false, 'message' => 'Column not found'];
+        }
+        
+        $oldPosition = $column->position;
+        
+        // Update positions for all affected columns
+        $this->updateColumnPositions($column, $oldPosition, $newPosition);
+        
+        $column->position = $newPosition;
+        if ($column->save()) {
+            return [
+                'success' => true,
+                'message' => 'Column position updated successfully',
+                'column' => [
+                    'id' => $column->id,
+                    'name' => $column->name,
+                    'position' => $column->position,
+                ]
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to update column position'];
+        }
+    }
+    
+    /**
+     * Update column positions when a column is moved
+     */
+    private function updateColumnPositions($movedColumn, $oldPosition, $newPosition)
+    {
+        if ($oldPosition === $newPosition) {
+            return; // No change needed
+        }
+        
+        if ($oldPosition < $newPosition) {
+            // Moving column to the right - shift columns to the left
+            KanbanColumn::updateAllCounters(
+                ['position' => -1],
+                [
+                    'and',
+                    ['>', 'position', $oldPosition],
+                    ['<=', 'position', $newPosition],
+                    ['!=', 'id', $movedColumn->id],
+                    ['is_active' => 1]
+                ]
+            );
+        } else {
+            // Moving column to the left - shift columns to the right
+            KanbanColumn::updateAllCounters(
+                ['position' => 1],
+                [
+                    'and',
+                    ['>=', 'position', $newPosition],
+                    ['<', 'position', $oldPosition],
+                    ['!=', 'id', $movedColumn->id],
+                    ['is_active' => 1]
+                ]
+            );
         }
     }
 }

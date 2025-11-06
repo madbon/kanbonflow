@@ -8,6 +8,7 @@ var KanbanBoard = {
     config: {
         updateTaskUrl: '',
         updatePositionUrl: '',
+        updateColumnPositionUrl: '',
         addTaskUrl: '',
         addColumnUrl: '',
         editColumnUrl: '',
@@ -25,6 +26,7 @@ var KanbanBoard = {
         console.log('Kanban config initialized (NEW VERSION):', this.config);
         this.bindEvents();
         this.initDragAndDrop();
+        this.initColumnDragAndDrop();
     },
 
     bindEvents: function() {
@@ -166,7 +168,21 @@ var KanbanBoard = {
                 e.preventDefault();
                 $(this).removeClass('column-drag-over');
                 
-                var taskData = JSON.parse(e.originalEvent.dataTransfer.getData('text/json'));
+                // Check if this is a column being dragged (not a task)
+                var columnId = e.originalEvent.dataTransfer.getData('text/column-id');
+                if (columnId) {
+                    // This is handled by the column drag-and-drop system
+                    return;
+                }
+                
+                // This is a task drop
+                var taskDataString = e.originalEvent.dataTransfer.getData('text/json');
+                if (!taskDataString) {
+                    console.log('No task data found in drop event');
+                    return;
+                }
+                
+                var taskData = JSON.parse(taskDataString);
                 var newStatus = $(this).data('status');
                 
                 // Calculate drop position
@@ -837,6 +853,200 @@ var KanbanBoard = {
                 }
             });
         }
+    },
+
+    /**
+     * Initialize column drag and drop functionality
+     */
+    initColumnDragAndDrop: function() {
+        var self = this;
+        
+        // Make column headers draggable
+        $('.kanban-column-header').each(function() {
+            $(this).on('dragstart', function(e) {
+                var column = $(this).closest('.kanban-column');
+                var columnId = column.data('column-id');
+                
+                console.log('Column drag started:', columnId);
+                
+                e.originalEvent.dataTransfer.setData('text/column-id', columnId);
+                e.originalEvent.dataTransfer.effectAllowed = 'move';
+                
+                // Add dragging class
+                column.addClass('column-dragging');
+                
+                // Add drag indicator styles
+                $('.kanban-column').not(column).addClass('column-drop-target');
+            });
+            
+            $(this).on('dragend', function(e) {
+                console.log('Column drag ended');
+                
+                // Remove all drag-related classes
+                $('.kanban-column').removeClass('column-dragging column-drop-target column-drag-over');
+                $('.column-drop-indicator').remove();
+            });
+        });
+        
+        // Make board container a drop target for columns
+        $('.kanban-board-container').on('dragover', function(e) {
+            var draggedColumnId = e.originalEvent.dataTransfer.getData('text/column-id');
+            if (!draggedColumnId) return; // Not a column drag
+            
+            e.preventDefault();
+            e.originalEvent.dataTransfer.dropEffect = 'move';
+            
+            // Find the column being hovered over
+            var target = $(e.target).closest('.kanban-column');
+            if (target.length && target.data('column-id') != draggedColumnId) {
+                // Calculate drop position
+                var dropInfo = self.calculateColumnDropPosition(e.originalEvent, target);
+                self.updateColumnDropIndicator(target, dropInfo);
+                
+                $('.kanban-column').removeClass('column-drag-over');
+                target.addClass('column-drag-over');
+            }
+        });
+        
+        $('.kanban-board-container').on('dragleave', function(e) {
+            // Only clear if leaving the board container entirely
+            if (!$(e.relatedTarget).closest('.kanban-board-container').length) {
+                $('.kanban-column').removeClass('column-drag-over');
+                $('.column-drop-indicator').remove();
+            }
+        });
+        
+        $('.kanban-board-container').on('drop', function(e) {
+            var draggedColumnId = e.originalEvent.dataTransfer.getData('text/column-id');
+            if (!draggedColumnId) return; // Not a column drop
+            
+            e.preventDefault();
+            
+            var target = $(e.target).closest('.kanban-column');
+            if (target.length && target.data('column-id') != draggedColumnId) {
+                console.log('Column dropped:', draggedColumnId, 'on', target.data('column-id'));
+                
+                var dropInfo = self.calculateColumnDropPosition(e.originalEvent, target);
+                self.moveColumn(draggedColumnId, target.data('column-id'), dropInfo);
+            }
+            
+            // Clean up
+            $('.kanban-column').removeClass('column-dragging column-drop-target column-drag-over');
+            $('.column-drop-indicator').remove();
+        });
+    },
+    
+    /**
+     * Calculate column drop position
+     */
+    calculateColumnDropPosition: function(event, targetColumn) {
+        var rect = targetColumn[0].getBoundingClientRect();
+        var x = event.clientX - rect.left;
+        var columnWidth = rect.width;
+        
+        // Determine if dropping before or after the target column
+        var position = x < columnWidth / 2 ? 'before' : 'after';
+        
+        return {
+            position: position,
+            targetColumnId: targetColumn.data('column-id')
+        };
+    },
+    
+    /**
+     * Update column drop indicator
+     */
+    updateColumnDropIndicator: function(targetColumn, dropInfo) {
+        // Remove existing indicators
+        $('.column-drop-indicator').remove();
+        
+        // Create drop indicator
+        var indicator = $('<div class="column-drop-indicator"></div>');
+        
+        if (dropInfo.position === 'before') {
+            targetColumn.before(indicator);
+        } else {
+            targetColumn.after(indicator);
+        }
+    },
+    
+    /**
+     * Move column to new position
+     */
+    moveColumn: function(draggedColumnId, targetColumnId, dropInfo) {
+        var self = this;
+        
+        console.log('Moving column:', draggedColumnId, 'relative to', targetColumnId, dropInfo);
+        
+        // Calculate new position
+        var targetColumn = $('.kanban-column[data-column-id="' + targetColumnId + '"]');
+        var targetPosition = $('.kanban-column').index(targetColumn);
+        
+        var newPosition = dropInfo.position === 'before' ? targetPosition : targetPosition + 1;
+        
+        // Adjust position if dragged column is before target
+        var draggedColumn = $('.kanban-column[data-column-id="' + draggedColumnId + '"]');
+        var draggedPosition = $('.kanban-column').index(draggedColumn);
+        
+        if (draggedPosition < targetPosition) {
+            newPosition--;
+        }
+        
+        console.log('New position for column:', newPosition);
+        
+        // Send AJAX request
+        var ajaxData = {
+            columnId: draggedColumnId,
+            position: newPosition
+        };
+        if (self.config.csrfParam && self.config.csrfToken) {
+            ajaxData[self.config.csrfParam] = self.config.csrfToken;
+        }
+        
+        console.log('Sending column position update:', ajaxData);
+        
+        $.ajax({
+            url: self.config.updateColumnPositionUrl,
+            method: 'POST',
+            data: ajaxData,
+            success: function(response) {
+                console.log('Column position update response:', response);
+                
+                if (response.success) {
+                    // Move column element to correct position
+                    self.moveColumnElement(draggedColumn, newPosition);
+                    self.showNotification('Column moved successfully', 'success');
+                } else {
+                    console.error('Move column failed:', response.message);
+                    self.showNotification(response.message || 'Failed to move column', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Column AJAX Error:', status, error);
+                console.error('Response:', xhr.responseText);
+                self.showNotification('Error moving column', 'error');
+            }
+        });
+    },
+    
+    /**
+     * Move column element in DOM
+     */
+    moveColumnElement: function(columnElement, newPosition) {
+        var allColumns = $('.kanban-column');
+        
+        if (newPosition === 0) {
+            // Move to first position
+            $('.kanban-board-container').prepend(columnElement);
+        } else if (newPosition >= allColumns.length - 1) {
+            // Move to last position
+            $('.kanban-board-container').append(columnElement);
+        } else {
+            // Move to specific position
+            columnElement.insertAfter(allColumns.eq(newPosition - 1));
+        }
+        
+        console.log('Column moved in DOM to position:', newPosition);
     }
 };
 

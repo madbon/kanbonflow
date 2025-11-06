@@ -15,7 +15,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
 KanbanAsset::register($this);
 
-// Add custom CSS for full-width layout
+// Add custom CSS for full-width layout and focus effects
 $this->registerCss('
     .container {
         max-width: none !important;
@@ -24,6 +24,78 @@ $this->registerCss('
     }
     body {
         overflow-x: auto;
+    }
+    
+    /* Focus Task Styles - Small Indicator Version */
+    .task-focused {
+        position: relative;
+    }
+    
+    .task-focused .focus-indicator {
+        display: block !important;
+    }
+    
+    .focus-indicator {
+        display: none;
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 12px;
+        height: 12px;
+        background: #007bff;
+        border-radius: 50%;
+        animation: focusBlink 1.5s infinite;
+        z-index: 5;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+    }
+    
+    .focus-indicator::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 6px;
+        height: 6px;
+        background: white;
+        border-radius: 50%;
+    }
+    
+    @keyframes focusBlink {
+        0% { 
+            opacity: 1;
+            transform: scale(1);
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+        }
+        50% { 
+            opacity: 0.3;
+            transform: scale(1.2);
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.9);
+        }
+        100% { 
+            opacity: 1;
+            transform: scale(1);
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+        }
+    }
+    
+    /* Focus button styling */
+    .btn-focus {
+        background: none;
+        border: none;
+        color: #6c757d;
+        padding: 5px;
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+    
+    .btn-focus:hover {
+        color: #007bff;
+    }
+    
+    .btn-focus.focused {
+        color: #007bff;
+        font-weight: bold;
     }
 ');
 
@@ -117,6 +189,9 @@ $statistics = KanbanBoard::getStatistics();
                                  style="background-color: rgba(<?= $rgbColor[0] ?>, <?= $rgbColor[1] ?>, <?= $rgbColor[2] ?>, <?= $backgroundOpacity ?>); 
                                         border-left-color: rgba(<?= $rgbColor[0] ?>, <?= $rgbColor[1] ?>, <?= $rgbColor[2] ?>, <?= $borderOpacity ?>);">
                                 
+                                <!-- Focus Indicator -->
+                                <div class="focus-indicator" title="This task is focused"></div>
+                                
                                 <div class="task-header">
                                     <div class="task-category" style="background-color: <?= $categoryColor ?>">
                                         <?= Html::encode($task->category ? $task->category->name : 'No Category') ?>
@@ -164,6 +239,9 @@ $statistics = KanbanBoard::getStatistics();
                                 </div>
                                 
                                 <div class="task-actions">
+                                    <button class="btn-focus" data-task-id="<?= $task->id ?>" title="Focus on this Task">
+                                        <i class="fa fa-bullseye"></i>
+                                    </button>
                                     <button class="btn-history" data-task-id="<?= $task->id ?>" title="View History">
                                         <i class="fa fa-history"></i>
                                     </button>

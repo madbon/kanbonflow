@@ -32,6 +32,10 @@ var KanbanBoard = {
         this.bindEvents();
         this.initDragAndDrop();
         this.initColumnDragAndDrop();
+        this.initKeyboardShortcuts();
+        
+        // Restore focused task from localStorage
+        this.restoreFocusedTask();
     },
 
     bindEvents: function() {
@@ -57,6 +61,14 @@ var KanbanBoard = {
             e.stopPropagation();
             var taskId = $(this).data('task-id');
             self.deleteTask(taskId);
+        });
+
+        // Focus button
+        $(document).on('click', '.btn-focus', function(e) {
+            e.stopPropagation();
+            var taskId = $(this).data('task-id');
+            console.log('Focus button clicked for task', taskId);
+            self.toggleTaskFocus(taskId);
         });
 
         // History button
@@ -1547,6 +1559,153 @@ var KanbanBoard = {
             error: function(xhr, status, error) {
                 console.error('AJAX error deleting comment:', xhr, status, error);
                 alert('Error deleting comment. Please try again.');
+            }
+        });
+    },
+
+    /**
+     * Toggle focus on a specific task
+     */
+    toggleTaskFocus: function(taskId) {
+        var self = this;
+        var taskElement = $('.kanban-task[data-task-id="' + taskId + '"]');
+        var focusButton = $('.btn-focus[data-task-id="' + taskId + '"]');
+        
+        console.log('Toggling focus for task:', taskId);
+        
+        if (taskElement.hasClass('task-focused')) {
+            // Remove focus
+            self.clearAllFocus();
+            self.showNotification('Task focus cleared', 'info');
+        } else {
+            // Clear any existing focus first
+            self.clearAllFocus();
+            
+            // Add focus to this task
+            taskElement.addClass('task-focused');
+            focusButton.addClass('focused');
+            
+            // Store focused task ID in localStorage for persistence
+            localStorage.setItem('kanban-focused-task', taskId);
+            self.focusedTaskId = taskId;
+            
+            // Show notification
+            var taskTitle = taskElement.find('.task-title').text();
+            self.showNotification('Focusing on: ' + taskTitle, 'success');
+            
+            // Auto-scroll to focused task if not in view
+            self.scrollToTask(taskElement);
+            
+            // Optional: Clear focus after a certain time (5 minutes for longer persistence)
+            if (self.focusTimeout) {
+                clearTimeout(self.focusTimeout);
+            }
+            self.focusTimeout = setTimeout(function() {
+                self.clearAllFocus();
+                self.showNotification('Focus timeout - task unfocused', 'info');
+            }, 300000); // 5 minutes
+        }
+    },
+
+    /**
+     * Clear focus from all tasks
+     */
+    clearAllFocus: function() {
+        $('.kanban-task').removeClass('task-focused');
+        $('.btn-focus').removeClass('focused');
+        
+        // Clear from localStorage
+        localStorage.removeItem('kanban-focused-task');
+        
+        if (this.focusTimeout) {
+            clearTimeout(this.focusTimeout);
+            this.focusTimeout = null;
+        }
+        
+        this.focusedTaskId = null;
+    },
+
+    /**
+     * Restore focused task state from localStorage
+     */
+    restoreFocusedTask: function() {
+        var focusedTaskId = localStorage.getItem('kanban-focused-task');
+        if (focusedTaskId) {
+            var $task = $('.kanban-task[data-task-id="' + focusedTaskId + '"]');
+            if ($task.length) {
+                this.focusedTaskId = focusedTaskId;
+                $task.find('.btn-focus').addClass('focused');
+                $task.find('.focus-indicator').show();
+                console.log('Restored focus for task:', focusedTaskId);
+            } else {
+                // Task not found, clear from localStorage
+                localStorage.removeItem('kanban-focused-task');
+            }
+        }
+    },
+
+    /**
+     * Scroll to a specific task element
+     */
+    scrollToTask: function(taskElement) {
+        if (taskElement.length) {
+            var container = $('.kanban-board-container');
+            var elementTop = taskElement.offset().top;
+            var elementLeft = taskElement.offset().left;
+            var containerTop = container.offset().top;
+            var containerLeft = container.offset().left;
+            
+            // Scroll vertically if needed
+            if (elementTop < containerTop || elementTop > containerTop + container.height()) {
+                $('html, body').animate({
+                    scrollTop: elementTop - 100
+                }, 500);
+            }
+            
+            // Scroll horizontally if needed
+            if (elementLeft < containerLeft || elementLeft > containerLeft + container.width()) {
+                container.animate({
+                    scrollLeft: container.scrollLeft() + (elementLeft - containerLeft) - 200
+                }, 500);
+            }
+        }
+    },
+
+    /**
+     * Get currently focused task ID
+     */
+    getFocusedTaskId: function() {
+        return this.focusedTaskId || null;
+    },
+
+    /**
+     * Initialize keyboard shortcuts for focus functionality
+     */
+    initKeyboardShortcuts: function() {
+        var self = this;
+        
+        $(document).on('keydown', function(e) {
+            // Only handle shortcuts when not typing in input fields
+            if ($(e.target).is('input, textarea, select')) {
+                return;
+            }
+            
+            // Escape key - clear focus
+            if (e.keyCode === 27) { // ESC
+                if (self.focusedTaskId) {
+                    self.clearAllFocus();
+                    self.showNotification('Focus cleared with ESC key', 'info');
+                }
+            }
+            
+            // F key - focus on first visible task
+            if (e.keyCode === 70 && !e.ctrlKey && !e.altKey && !e.shiftKey) { // F key
+                e.preventDefault();
+                var firstTask = $('.kanban-task').first();
+                if (firstTask.length) {
+                    var taskId = firstTask.data('task-id');
+                    self.toggleTaskFocus(taskId);
+                }
             }
         });
     }

@@ -462,6 +462,169 @@ $this->registerCss('
             transform: scale(1.1); 
         }
     }
+
+    /* Clickable stats cards */
+    .stat-card {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .stat-card:active {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+
+    /* Deadline Tasks Modal Styles */
+    .deadline-tasks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 15px;
+        max-height: 60vh;
+        overflow-y: auto;
+        padding: 10px 0;
+    }
+
+    .deadline-task-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .deadline-task-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-color: #007bff;
+    }
+
+    .deadline-task-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .deadline-task-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #495057;
+        margin: 0;
+        line-height: 1.3;
+        flex: 1;
+        margin-right: 10px;
+    }
+
+    .deadline-task-priority {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .priority-low { background: #d4edda; color: #155724; }
+    .priority-medium { background: #fff3cd; color: #856404; }
+    .priority-high { background: #f8d7da; color: #721c24; }
+    .priority-critical { background: #d1ecf1; color: #0c5460; }
+
+    .deadline-task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        color: #6c757d;
+    }
+
+    .deadline-task-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .deadline-task-meta-item i {
+        width: 14px;
+        text-align: center;
+    }
+
+    .deadline-task-description {
+        font-size: 14px;
+        color: #6c757d;
+        line-height: 1.4;
+        margin-bottom: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .deadline-task-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 8px;
+        border-top: 1px solid #f1f3f4;
+    }
+
+    .deadline-task-category {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: white;
+    }
+
+    .deadline-task-status {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6c757d;
+        text-transform: capitalize;
+    }
+
+    .deadline-tasks-summary {
+        font-size: 14px;
+        color: #6c757d;
+        font-weight: 500;
+    }
+
+    /* Empty state for deadline tasks modal */
+    .deadline-tasks-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    .deadline-tasks-empty i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .deadline-tasks-empty h5 {
+        margin-bottom: 8px;
+        color: #495057;
+    }
+
+    /* Responsive design for deadline tasks modal */
+    @media (max-width: 768px) {
+        .deadline-tasks-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .deadline-task-card {
+            padding: 12px;
+        }
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();
@@ -488,9 +651,10 @@ $statistics = KanbanBoard::getStatistics();
         <div class="kanban-stats">
             <?php foreach ($statistics as $key => $stat): ?>
                 <div class="stat-card stat-<?= $key ?>" 
+                     data-category="<?= Html::encode($key) ?>"
                      style="border-left-color: <?= $stat['color'] ?>">
-                    <div class="stat-number" style="color: <?= $stat['color'] ?>"><?= $stat['count'] ?></div>
-                    <div class="stat-label" style="color: <?= $stat['color'] ?>">
+                    <div class="stat-number stat-value" style="color: <?= $stat['color'] ?>"><?= $stat['count'] ?></div>
+                    <div class="stat-label stat-title" style="color: <?= $stat['color'] ?>">
                         <i class="fa <?= $stat['icon'] ?>"></i> 
                         <?= Html::encode($stat['display_name']) ?>
                     </div>
@@ -881,6 +1045,37 @@ $statistics = KanbanBoard::getStatistics();
     </div>
 </div>
 
+<!-- Deadline Tasks Modal -->
+<div id="deadlineTasksModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="deadlineTasksModalLabel">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="deadlineTasksModalLabel">
+                    <i class="fa fa-calendar" id="deadlineTasksIcon"></i>
+                    <span id="deadlineTasksTitle">Deadline Tasks</span>
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="deadlineTasksContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading tasks...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="deadline-tasks-summary">
+                    <span id="deadlineTasksCount">0 tasks found</span>
+                </div>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php
 $this->registerJs("
     // Initialize Kanban Board - DEBUG VERSION
@@ -907,6 +1102,7 @@ $this->registerJs("
             imageClipboardUrl: '" . Url::to(['/taskmonitor/image/upload-clipboard']) . "',
             imageListUrl: '" . Url::to(['/taskmonitor/image/list']) . "',
             imageDeleteUrl: '" . Url::to(['/taskmonitor/image/delete']) . "',
+            getDeadlineTasks: '" . Url::to(['get-deadline-tasks']) . "',
             csrfToken: '" . Yii::$app->request->csrfToken . "',
             csrfParam: '" . Yii::$app->request->csrfParam . "'
         });

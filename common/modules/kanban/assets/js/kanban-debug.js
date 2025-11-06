@@ -2084,4 +2084,153 @@ $(document).ready(function() {
         '</style>';
     
     $('head').append(notificationStyles);
+
+    // Statistics card click handlers for deadline tasks modal
+    $(document).on('click', '.stat-card', function(e) {
+        e.preventDefault();
+        var categoryKey = $(this).data('category');
+        var categoryName = $(this).find('.stat-title').text().trim();
+        var taskCount = $(this).find('.stat-value').text().trim();
+        
+        if (!categoryKey) {
+            console.log('No category key found for this card');
+            return;
+        }
+        
+        // Update modal title and summary
+        $('#deadlineTasksModalLabel').text(categoryName + ' Tasks');
+        $('.deadline-tasks-summary').text('Showing ' + taskCount + ' tasks');
+        
+        // Show loading state
+        $('#deadlineTasksModal .modal-body').html(
+            '<div class="text-center py-4">' +
+                '<div class="spinner-border text-primary" role="status">' +
+                    '<span class="sr-only">Loading...</span>' +
+                '</div>' +
+                '<p class="mt-3 text-muted">Loading tasks...</p>' +
+            '</div>'
+        );
+        
+        // Show the modal
+        $('#deadlineTasksModal').modal('show');
+        
+        // Fetch tasks for this category
+        fetchDeadlineTasks(categoryKey);
+    });
 });
+
+function fetchDeadlineTasks(categoryKey) {
+    var ajaxData = {
+        category: categoryKey
+    };
+    
+    // Add CSRF token to form data
+    if (KanbanBoard.config.csrfParam && KanbanBoard.config.csrfToken) {
+        ajaxData[KanbanBoard.config.csrfParam] = KanbanBoard.config.csrfToken;
+    }
+    
+    $.ajax({
+        url: KanbanBoard.config.getDeadlineTasks,
+        type: 'GET',
+        data: ajaxData,
+        success: function(response) {
+            if (response.success) {
+                renderDeadlineTasks(response.tasks);
+            } else {
+                showDeadlineTasksError(response.message || 'Failed to load tasks');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching deadline tasks:', error);
+            showDeadlineTasksError('Network error occurred while loading tasks');
+        }
+    });
+}
+
+function renderDeadlineTasks(tasks) {
+    var container = $('#deadlineTasksModal .modal-body');
+    
+    if (!tasks || tasks.length === 0) {
+        container.html(
+            '<div class="deadline-tasks-empty">' +
+                '<i class="fas fa-calendar-times"></i>' +
+                '<h5>No Tasks Found</h5>' +
+                '<p>There are no tasks in this deadline category.</p>' +
+            '</div>'
+        );
+        return;
+    }
+    
+    var html = '<div class="deadline-tasks-grid">';
+    
+    tasks.forEach(function(task) {
+        var priorityClass = 'priority-' + (task.priority || 'medium').toLowerCase();
+        var categoryColor = task.color || '#6c757d';
+        var daysUntilDeadline = task.days_until_deadline;
+        var deadlineText = '';
+        
+        if (daysUntilDeadline === 0) {
+            deadlineText = '<span class="text-danger font-weight-bold">Due Today</span>';
+        } else if (daysUntilDeadline < 0) {
+            deadlineText = '<span class="text-danger">' + Math.abs(daysUntilDeadline) + ' days overdue</span>';
+        } else {
+            deadlineText = '<span class="text-muted">' + daysUntilDeadline + ' days remaining</span>';
+        }
+        
+        html += '<div class="deadline-task-card" onclick="openTaskModal(' + task.id + ')">';
+        html += '    <div class="deadline-task-header">';
+        html += '        <h6 class="deadline-task-title">' + htmlEscape(task.title) + '</h6>';
+        html += '        <span class="deadline-task-priority ' + priorityClass + '">' + (task.priority || 'Medium') + '</span>';
+        html += '    </div>';
+        
+        html += '    <div class="deadline-task-meta">';
+        html += '        <div class="deadline-task-meta-item">';
+        html += '            <i class="fas fa-calendar-alt"></i>';
+        html += '            <span>' + deadlineText + '</span>';
+        html += '        </div>';
+        if (task.assigned_to_name) {
+            html += '        <div class="deadline-task-meta-item">';
+            html += '            <i class="fas fa-user"></i>';
+            html += '            <span>' + htmlEscape(task.assigned_to_name) + '</span>';
+            html += '        </div>';
+        }
+        html += '    </div>';
+        
+        if (task.description) {
+            html += '    <div class="deadline-task-description">' + htmlEscape(task.description) + '</div>';
+        }
+        
+        html += '    <div class="deadline-task-footer">';
+        html += '        <div class="deadline-task-category" style="background-color: ' + categoryColor + '">';
+        html += '            <i class="' + (task.icon || 'fas fa-circle') + '"></i>';
+        html += '            <span>' + htmlEscape(task.category_name || 'No Category') + '</span>';
+        html += '        </div>';
+        html += '        <div class="deadline-task-status">' + htmlEscape(task.status || 'To Do') + '</div>';
+        html += '    </div>';
+        html += '</div>';
+    });
+    
+    html += '</div>';
+    container.html(html);
+}
+
+function showDeadlineTasksError(message) {
+    $('#deadlineTasksModal .modal-body').html(
+        '<div class="deadline-tasks-empty">' +
+            '<i class="fas fa-exclamation-triangle text-warning"></i>' +
+            '<h5>Error Loading Tasks</h5>' +
+            '<p>' + htmlEscape(message) + '</p>' +
+            '<button class="btn btn-primary btn-sm" onclick="$(this).closest(\'.modal\').modal(\'hide\')">Close</button>' +
+        '</div>'
+    );
+}
+
+function htmlEscape(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}

@@ -202,4 +202,85 @@ class KanbanBoard
         $task->status = $newStatus;
         return $task->save();
     }
+
+    /**
+     * Get tasks by deadline category
+     * @param string $categoryKey
+     * @return Task[]
+     */
+    public static function getTasksByDeadlineCategory($categoryKey)
+    {
+        $today = strtotime('today');
+        $tomorrow = strtotime('tomorrow');
+        
+        // Base query for non-completed tasks
+        $query = Task::find()
+            ->with(['category'])
+            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
+        
+        switch ($categoryKey) {
+            case 'overdue':
+                $query->andWhere(['<', 'deadline', $today]);
+                break;
+                
+            case 'due_today':
+                $query->andWhere(['>=', 'deadline', $today])
+                      ->andWhere(['<', 'deadline', $tomorrow]);
+                break;
+                
+            default:
+                // For configured deadline ranges, find the setting by name
+                $settings = TaskColorSettings::find()
+                    ->where(['is_active' => 1])
+                    ->all();
+                    
+                $targetSetting = null;
+                foreach ($settings as $setting) {
+                    $key = strtolower(str_replace(' ', '_', $setting->name));
+                    if ($key === $categoryKey) {
+                        $targetSetting = $setting;
+                        break;
+                    }
+                }
+                    
+                if ($targetSetting) {
+                    if ($targetSetting->name === 'Overdue') {
+                        $query->andWhere(['<', 'deadline', $today]);
+                    } else {
+                        // Get all settings to determine range
+                        $allSettings = TaskColorSettings::getActiveSettings();
+                        $currentIndex = null;
+                        
+                        foreach ($allSettings as $index => $setting) {
+                            if ($setting->id === $targetSetting->id) {
+                                $currentIndex = $index;
+                                break;
+                            }
+                        }
+                        
+                        if ($currentIndex !== null) {
+                            $currentDays = $targetSetting->days_before_deadline;
+                            $nextSetting = isset($allSettings[$currentIndex + 1]) ? $allSettings[$currentIndex + 1] : null;
+                            $nextDays = $nextSetting ? $nextSetting->days_before_deadline : 365;
+                            
+                            $fromDate = strtotime("+{$currentDays} days", $today);
+                            $toDate = strtotime("+{$nextDays} days", $today);
+                            
+                            $query->andWhere(['>=', 'deadline', $fromDate])
+                                  ->andWhere(['<', 'deadline', $toDate]);
+                        }
+                    }
+                } else {
+                    // Invalid category, return empty result
+                    return [];
+                }
+                break;
+        }
+        
+        return $query->orderBy([
+            'deadline' => SORT_ASC,
+            'priority' => SORT_DESC,
+            'created_at' => SORT_DESC
+        ])->all();
+    }
 }

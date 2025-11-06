@@ -30,7 +30,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -48,6 +48,7 @@ class BoardController extends Controller
                     'delete-task' => ['POST'],
                     'get-task' => ['GET'],
                     'get-task-details' => ['GET'],
+                    'get-deadline-tasks' => ['GET'],
                 ],
             ],
         ];
@@ -830,5 +831,58 @@ class BoardController extends Controller
             'history' => $historyData,
             'total_count' => count($historyData)
         ];
+    }
+
+    /**
+     * Get tasks by deadline category via AJAX
+     */
+    public function actionGetDeadlineTasks()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $categoryKey = Yii::$app->request->get('category');
+        
+        if (!$categoryKey) {
+            return ['success' => false, 'message' => 'Category is required'];
+        }
+        
+        try {
+            $tasks = KanbanBoard::getTasksByDeadlineCategory($categoryKey);
+            $tasksData = [];
+            $todayStart = strtotime('today');
+            
+            foreach ($tasks as $task) {
+                // Calculate days until deadline
+                $daysUntilDeadline = floor(($task->deadline - $todayStart) / 86400);
+                
+                $tasksData[] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'days_until_deadline' => $daysUntilDeadline,
+                    'assigned_to_name' => null, // TODO: Add user relation if needed
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'tasks' => $tasksData,
+                'category' => $categoryKey,
+                'total_count' => count($tasksData)
+            ];
+            
+        } catch (Exception $e) {
+            Yii::error("Error getting deadline tasks: " . $e->getMessage(), 'kanban');
+            return [
+                'success' => false, 
+                'message' => 'Error loading tasks: ' . $e->getMessage()
+            ];
+        }
     }
 }

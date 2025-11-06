@@ -176,8 +176,17 @@
         <h1 class="mb-2">Activity Log Export</h1>
         <p class="mb-0">
             Generated on <?= date('F j, Y \a\t g:i A') ?>
-            <?php if (count($activities) > 0): ?>
-                | <?= count($activities) ?> activities
+            <?php 
+            // Count activities excluding position_changed
+            $filteredCount = 0;
+            foreach ($activities as $activity) {
+                if ($activity->action_type !== 'position_changed') {
+                    $filteredCount++;
+                }
+            }
+            ?>
+            <?php if ($filteredCount > 0): ?>
+                | <?= $filteredCount ?> activities
             <?php endif; ?>
         </p>
     </div>
@@ -213,7 +222,7 @@
     
     <!-- Table -->
     <div class="table-container">
-        <?php if (count($activities) > 0): ?>
+        <?php if ($filteredCount > 0): ?>
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -225,6 +234,7 @@
                     </thead>
                     <tbody>
                         <?php foreach ($activities as $activity): ?>
+                            <?php if ($activity->action_type === 'position_changed') continue; ?>
                             <tr>
                                 <!-- Activity Details Column -->
                                 <td>

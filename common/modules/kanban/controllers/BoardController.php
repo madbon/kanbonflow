@@ -787,6 +787,8 @@ class BoardController extends Controller
         Yii::$app->response->format = Response::FORMAT_JSON;
         
         $taskId = Yii::$app->request->get('taskId');
+        \Yii::info("Getting task history for taskId: " . $taskId, 'kanban');
+        
         if (!$taskId) {
             return ['success' => false, 'message' => 'Task ID is required'];
         }
@@ -797,6 +799,7 @@ class BoardController extends Controller
         }
         
         $history = TaskHistory::getTaskHistory($taskId, 50);
+        \Yii::info("Found " . count($history) . " history entries for task " . $taskId, 'kanban');
         $historyData = [];
         
         foreach ($history as $entry) {

@@ -38,13 +38,47 @@ class KanbanBoard
      */
     public static function getStatistics()
     {
+        $now = time();
+        $today = strtotime('today');
+        $tomorrow = strtotime('tomorrow');
+        $threeDaysFromNow = strtotime('+3 days');
+        $oneWeekFromNow = strtotime('+1 week');
+        $oneMonthFromNow = strtotime('+1 month');
+        
+        // Base query for non-completed tasks
+        $baseQuery = Task::find()->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
+        
+        // Calculate counts
+        $overdueQuery = clone $baseQuery;
+        $overdueCount = $overdueQuery->andWhere(['<', 'deadline', $today])->count();
+        
+        $todayQuery = clone $baseQuery;
+        $todayCount = $todayQuery->andWhere(['>=', 'deadline', $today])
+            ->andWhere(['<', 'deadline', $tomorrow])->count();
+            
+        $oneDayQuery = clone $baseQuery;
+        $oneDayCount = $oneDayQuery->andWhere(['>=', 'deadline', $tomorrow])
+            ->andWhere(['<', 'deadline', strtotime('+2 days')])->count();
+            
+        $threeDaysQuery = clone $baseQuery;
+        $threeDaysCount = $threeDaysQuery->andWhere(['>=', 'deadline', strtotime('+2 days')])
+            ->andWhere(['<', 'deadline', $threeDaysFromNow])->count();
+            
+        $oneWeekQuery = clone $baseQuery;
+        $oneWeekCount = $oneWeekQuery->andWhere(['>=', 'deadline', $threeDaysFromNow])
+            ->andWhere(['<', 'deadline', $oneWeekFromNow])->count();
+            
+        $oneMonthQuery = clone $baseQuery;
+        $oneMonthCount = $oneMonthQuery->andWhere(['>=', 'deadline', $oneWeekFromNow])
+            ->andWhere(['<', 'deadline', $oneMonthFromNow])->count();
+        
         return [
-            'total' => Task::find()->count(),
-            'pending' => Task::find()->where(['status' => Task::STATUS_PENDING])->count(),
-            'in_progress' => Task::find()->where(['status' => Task::STATUS_IN_PROGRESS])->count(),
-            'completed' => Task::find()->where(['status' => Task::STATUS_COMPLETED])->count(),
-            'overdue' => Task::find()->where(['<', 'deadline', time()])
-                ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])->count(),
+            'overdue' => $overdueCount,
+            'today' => $todayCount,
+            'one_day' => $oneDayCount,
+            'three_days' => $threeDaysCount,
+            'one_week' => $oneWeekCount,
+            'one_month' => $oneMonthCount,
         ];
     }
 

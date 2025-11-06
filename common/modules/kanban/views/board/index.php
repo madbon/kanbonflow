@@ -300,6 +300,173 @@ $this->registerCss('
         border-color: #007bff;
         box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
     }
+
+    /* Enhanced Deadline Statistics Cards */
+    .kanban-stats {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        min-width: 140px;
+        border-left: 4px solid #e9ecef;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .stat-number {
+        font-size: 24px;
+        font-weight: 700;
+        color: #495057;
+        margin-bottom: 4px;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    .stat-label i {
+        font-size: 14px;
+    }
+
+    /* Specific styling for each deadline category */
+    .stat-overdue {
+        border-left-color: #dc3545;
+        background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+    }
+
+    .stat-overdue .stat-number {
+        color: #dc3545;
+    }
+
+    .stat-overdue .stat-label {
+        color: #dc3545;
+    }
+
+    .stat-today {
+        border-left-color: #fd7e14;
+        background: linear-gradient(135deg, #fff8f1 0%, #ffffff 100%);
+    }
+
+    .stat-today .stat-number {
+        color: #fd7e14;
+    }
+
+    .stat-today .stat-label {
+        color: #fd7e14;
+    }
+
+    .stat-one-day {
+        border-left-color: #ffc107;
+        background: linear-gradient(135deg, #fffbf0 0%, #ffffff 100%);
+    }
+
+    .stat-one-day .stat-number {
+        color: #e09800;
+    }
+
+    .stat-one-day .stat-label {
+        color: #e09800;
+    }
+
+    .stat-three-days {
+        border-left-color: #17a2b8;
+        background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+    }
+
+    .stat-three-days .stat-number {
+        color: #17a2b8;
+    }
+
+    .stat-three-days .stat-label {
+        color: #17a2b8;
+    }
+
+    .stat-one-week {
+        border-left-color: #007bff;
+        background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+    }
+
+    .stat-one-week .stat-number {
+        color: #007bff;
+    }
+
+    .stat-one-week .stat-label {
+        color: #007bff;
+    }
+
+    .stat-one-month {
+        border-left-color: #28a745;
+        background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+    }
+
+    .stat-one-month .stat-number {
+        color: #28a745;
+    }
+
+    .stat-one-month .stat-label {
+        color: #28a745;
+    }
+
+    /* Responsive design for stats */
+    @media (max-width: 768px) {
+        .kanban-stats {
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        
+        .stat-card {
+            flex-shrink: 0;
+            min-width: 120px;
+            padding: 12px 16px;
+        }
+        
+        .stat-number {
+            font-size: 20px;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+        }
+    }
+
+    /* Animation for urgent tasks */
+    .stat-overdue:hover {
+        animation: urgentPulse 1s ease-in-out;
+    }
+
+    @keyframes urgentPulse {
+        0%, 100% { 
+            transform: translateY(-2px) scale(1); 
+        }
+        50% { 
+            transform: translateY(-2px) scale(1.05); 
+        }
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();
@@ -322,21 +489,31 @@ $statistics = KanbanBoard::getStatistics();
             </div>
         </div>
         
-        <!-- Statistics Cards -->
+        <!-- Deadline Statistics Cards -->
         <div class="kanban-stats">
-            <div class="stat-card stat-total">
-                <div class="stat-number"><?= $statistics['total'] ?></div>
-                <div class="stat-label">Total Tasks</div>
-            </div>
-            <?php foreach ($columns as $column): ?>
-                <div class="stat-card" style="border-left: 4px solid <?= $column->color ?>">
-                    <div class="stat-number"><?= count(isset($tasks[$column->status_key]) ? $tasks[$column->status_key] : []) ?></div>
-                    <div class="stat-label"><?= Html::encode($column->name) ?></div>
-                </div>
-            <?php endforeach; ?>
             <div class="stat-card stat-overdue">
                 <div class="stat-number"><?= $statistics['overdue'] ?></div>
-                <div class="stat-label">Overdue</div>
+                <div class="stat-label"><i class="fa fa-exclamation-triangle"></i> Overdue</div>
+            </div>
+            <div class="stat-card stat-today">
+                <div class="stat-number"><?= $statistics['today'] ?></div>
+                <div class="stat-label"><i class="fa fa-calendar-day"></i> Due Today</div>
+            </div>
+            <div class="stat-card stat-one-day">
+                <div class="stat-number"><?= $statistics['one_day'] ?></div>
+                <div class="stat-label"><i class="fa fa-clock"></i> Due Tomorrow</div>
+            </div>
+            <div class="stat-card stat-three-days">
+                <div class="stat-number"><?= $statistics['three_days'] ?></div>
+                <div class="stat-label"><i class="fa fa-calendar-week"></i> Due in 3 Days</div>
+            </div>
+            <div class="stat-card stat-one-week">
+                <div class="stat-number"><?= $statistics['one_week'] ?></div>
+                <div class="stat-label"><i class="fa fa-calendar"></i> Due in 1 Week</div>
+            </div>
+            <div class="stat-card stat-one-month">
+                <div class="stat-number"><?= $statistics['one_month'] ?></div>
+                <div class="stat-label"><i class="fa fa-calendar-alt"></i> Due in 1 Month</div>
             </div>
         </div>
     </div>

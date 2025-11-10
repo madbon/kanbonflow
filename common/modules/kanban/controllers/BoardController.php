@@ -22,6 +22,19 @@ class BoardController extends Controller
     /**
      * {@inheritdoc}
      */
+    public function beforeAction($action)
+    {
+        // Disable CSRF validation for AJAX endpoints
+        if (in_array($action->id, ['get-category-completion-tasks', 'get-completion-tasks', 'get-deadline-tasks'])) {
+            $this->enableCsrfValidation = false;
+        }
+        
+        return parent::beforeAction($action);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function behaviors()
     {
         return [
@@ -30,7 +43,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -49,6 +62,8 @@ class BoardController extends Controller
                     'get-task' => ['GET'],
                     'get-task-details' => ['GET'],
                     'get-deadline-tasks' => ['GET'],
+                    'get-completion-tasks' => ['GET', 'POST'],
+                    'get-category-completion-tasks' => ['GET', 'POST'],
                 ],
             ],
         ];
@@ -900,6 +915,144 @@ class BoardController extends Controller
             return [
                 'success' => false, 
                 'message' => 'Error loading tasks: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get tasks by completion status via AJAX
+     */
+    public function actionGetCompletionTasks()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        try {
+            $tasksData = KanbanBoard::getCompletionTasks();
+            $formattedData = [
+                'completed' => [],
+                'not_completed' => []
+            ];
+            
+            // Format completed tasks
+            foreach ($tasksData['completed'] as $task) {
+                $formattedData['completed'][] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'completed_at' => $task->completed_at,
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            // Format not completed tasks  
+            foreach ($tasksData['not_completed'] as $task) {
+                $formattedData['not_completed'][] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'tasks' => $formattedData,
+                'completed_count' => count($formattedData['completed']),
+                'not_completed_count' => count($formattedData['not_completed']),
+                'total_count' => count($formattedData['completed']) + count($formattedData['not_completed'])
+            ];
+            
+        } catch (Exception $e) {
+            Yii::error("Error getting completion tasks: " . $e->getMessage(), 'kanban');
+            return [
+                'success' => false, 
+                'message' => 'Error loading tasks: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get tasks by category and completion status via AJAX
+     */
+    public function actionGetCategoryCompletionTasks()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        if (!Yii::$app->request->isAjax) {
+            return ['success' => false, 'message' => 'Invalid request'];
+        }
+        
+        try {
+            // Get categoryId from either GET or POST
+            $categoryId = Yii::$app->request->get('categoryId') ?: Yii::$app->request->post('categoryId');
+            
+            // Convert 'null' string to actual null for uncategorized tasks
+            if ($categoryId === 'null' || $categoryId === '') {
+                $categoryId = null;
+            } else {
+                $categoryId = (int) $categoryId;
+            }
+            
+            $tasksData = KanbanBoard::getCategoryCompletionTasks($categoryId);
+            $formattedData = [
+                'completed' => [],
+                'not_completed' => []
+            ];
+            
+            // Format completed tasks
+            foreach ($tasksData['completed'] as $task) {
+                $formattedData['completed'][] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'completed_at' => $task->completed_at,
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            // Format not completed tasks  
+            foreach ($tasksData['not_completed'] as $task) {
+                $formattedData['not_completed'][] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'tasks' => $formattedData,
+                'completed_count' => count($formattedData['completed']),
+                'not_completed_count' => count($formattedData['not_completed']),
+                'total_count' => count($formattedData['completed']) + count($formattedData['not_completed'])
+            ];
+            
+        } catch (Exception $e) {
+            Yii::error("Error getting category completion tasks: " . $e->getMessage(), 'kanban');
+            return [
+                'success' => false, 
+                'message' => 'Error loading category tasks: ' . $e->getMessage()
             ];
         }
     }

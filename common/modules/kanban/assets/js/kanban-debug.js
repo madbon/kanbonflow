@@ -2087,7 +2087,7 @@ $(document).ready(function() {
     
     $('head').append(notificationStyles);
 
-    // Statistics card click handlers for deadline tasks modal
+    // Statistics card click handlers for deadline, completion, and category tasks modals
     $(document).on('click', '.stat-card', function(e) {
         e.preventDefault();
         var categoryKey = $(this).data('category');
@@ -2099,25 +2099,40 @@ $(document).ready(function() {
             return;
         }
         
-        // Update modal title and summary
-        $('#deadlineTasksModalLabel').text(categoryName + ' Tasks');
-        $('.deadline-tasks-summary').text('Showing ' + taskCount + ' tasks');
-        
-        // Show loading state
-        $('#deadlineTasksModal .modal-body').html(
-            '<div class="text-center py-4">' +
-                '<div class="spinner-border text-primary" role="status">' +
-                    '<span class="sr-only">Loading...</span>' +
-                '</div>' +
-                '<p class="mt-3 text-muted">Loading tasks...</p>' +
-            '</div>'
-        );
-        
-        // Show the modal
-        $('#deadlineTasksModal').modal('show');
-        
-        // Fetch tasks for this category
-        fetchDeadlineTasks(categoryKey);
+        // Check if this is the completion status card
+        if (categoryKey === 'completion_status') {
+            // Show completion tasks modal
+            showCompletionTasksModal();
+        } else if (categoryKey.indexOf('category_') === 0) {
+            // This is a category-based statistics card
+            var categoryId = categoryKey.replace('category_', '');
+            if (categoryId === 'none') {
+                categoryId = null;
+            }
+            
+            // Show category completion tasks modal
+            showCategoryCompletionTasksModal(categoryId, categoryName);
+        } else {
+            // Show deadline tasks modal
+            $('#deadlineTasksModalLabel').text(categoryName + ' Tasks');
+            $('.deadline-tasks-summary').text('Showing ' + taskCount + ' tasks');
+            
+            // Show loading state
+            $('#deadlineTasksModal .modal-body').html(
+                '<div class="text-center py-4">' +
+                    '<div class="spinner-border text-primary" role="status">' +
+                        '<span class="sr-only">Loading...</span>' +
+                    '</div>' +
+                    '<p class="mt-3 text-muted">Loading tasks...</p>' +
+                '</div>'
+            );
+            
+            // Show the modal
+            $('#deadlineTasksModal').modal('show');
+            
+            // Fetch tasks for this category
+            fetchDeadlineTasks(categoryKey);
+        }
     });
 });
 
@@ -2335,6 +2350,275 @@ function emphasizeTaskInBoard(taskId) {
                 }, 1500); // Wait for scrolling to complete before opening modal
         
     }, 300); // Wait for modal close animation
+}
+
+// Function to show completion tasks modal
+function showCompletionTasksModal() {
+    // Show loading state
+    $('#completionTasksContent').html(
+        '<div class="text-center py-4">' +
+            '<div class="spinner-border text-primary" role="status">' +
+                '<span class="sr-only">Loading...</span>' +
+            '</div>' +
+            '<p class="mt-3 text-muted">Loading tasks...</p>' +
+        '</div>'
+    );
+    
+    // Show the modal
+    $('#completionTasksModal').modal('show');
+    
+    // Fetch completion tasks
+    fetchCompletionTasks();
+}
+
+// Function to fetch completion tasks via AJAX
+function fetchCompletionTasks() {
+    var ajaxData = {};
+    
+    // Add CSRF token if available
+    if (KanbanBoard.config.csrfParam && KanbanBoard.config.csrfToken) {
+        ajaxData[KanbanBoard.config.csrfParam] = KanbanBoard.config.csrfToken;
+    }
+    
+    $.ajax({
+        url: KanbanBoard.config.getCompletionTasks,
+        type: 'GET',
+        data: ajaxData,
+        success: function(response) {
+            if (response.success) {
+                renderCompletionTasks(response.tasks, response.completed_count, response.not_completed_count);
+            } else {
+                showCompletionTasksError(response.message || 'Failed to load tasks');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching completion tasks:', error);
+            showCompletionTasksError('Network error occurred while loading tasks');
+        }
+    });
+}
+
+// Function to render completion tasks in the modal
+function renderCompletionTasks(tasks, completedCount, notCompletedCount) {
+    var container = $('#completionTasksModal .modal-body');
+    
+    // Update summary
+    $('#completionTasksCount').text(completedCount + ' completed, ' + notCompletedCount + ' not completed');
+    
+    var html = '<div class="completion-tasks-container">';
+    
+    // Not Completed Column
+    html += '<div class="completion-tasks-column">';
+    html += '    <div class="completion-tasks-column-header not-completed">';
+    html += '        <span><i class="fa fa-clock"></i> Not Completed</span>';
+    html += '        <span class="completion-count-badge not-completed">' + notCompletedCount + '</span>';
+    html += '    </div>';
+    html += '    <div class="completion-tasks-column-body">';
+    
+    if (tasks.not_completed && tasks.not_completed.length > 0) {
+        tasks.not_completed.forEach(function(task) {
+            html += renderCompletionTaskCard(task, 'not-completed');
+        });
+    } else {
+        html += '<div class="text-center text-muted py-4">';
+        html += '    <i class="fa fa-check-circle fa-2x mb-2"></i>';
+        html += '    <p>All tasks are completed!</p>';
+        html += '</div>';
+    }
+    
+    html += '    </div>';
+    html += '</div>';
+    
+    // Completed Column
+    html += '<div class="completion-tasks-column">';
+    html += '    <div class="completion-tasks-column-header completed">';
+    html += '        <span><i class="fa fa-check-circle"></i> Completed</span>';
+    html += '        <span class="completion-count-badge completed">' + completedCount + '</span>';
+    html += '    </div>';
+    html += '    <div class="completion-tasks-column-body">';
+    
+    if (tasks.completed && tasks.completed.length > 0) {
+        tasks.completed.forEach(function(task) {
+            html += renderCompletionTaskCard(task, 'completed');
+        });
+    } else {
+        html += '<div class="text-center text-muted py-4">';
+        html += '    <i class="fa fa-hourglass-half fa-2x mb-2"></i>';
+        html += '    <p>No completed tasks yet.</p>';
+        html += '</div>';
+    }
+    
+    html += '    </div>';
+    html += '</div>';
+    html += '</div>';
+    
+    container.html(html);
+}
+
+// Function to render individual completion task card
+function renderCompletionTaskCard(task, type) {
+    var html = '<div class="completion-task-card ' + type + '" onclick="emphasizeTaskInBoard(' + task.id + ')">';
+    html += '    <div class="completion-task-title">' + htmlEscape(task.title) + '</div>';
+    html += '    <div class="completion-task-meta">';
+    html += '        <span class="completion-task-status ' + type + '">' + htmlEscape(task.status) + '</span>';
+    
+    if (task.category_name) {
+        html += '        <span style="color: ' + (task.color || '#6c757d') + '">';
+        html += '            <i class="' + (task.icon || 'fas fa-circle') + '"></i> ';
+        html += '            ' + htmlEscape(task.category_name);
+        html += '        </span>';
+    }
+    
+    html += '    </div>';
+    html += '</div>';
+    
+    return html;
+}
+
+// Function to show error in completion tasks modal
+function showCompletionTasksError(message) {
+    $('#completionTasksModal .modal-body').html(
+        '<div class="alert alert-danger" role="alert">' +
+            '<i class="fa fa-exclamation-triangle"></i> ' +
+            '<strong>Error:</strong> ' + htmlEscape(message) +
+        '</div>'
+    );
+}
+
+// Function to show category completion tasks modal
+function showCategoryCompletionTasksModal(categoryId, categoryName) {
+    // Update modal title
+    $('#categoryCompletionTasksModalLabel span').text(categoryName + ' Tasks');
+    
+    // Show loading state
+    $('#categoryCompletionTasksContent').html(
+        '<div class="text-center py-4">' +
+            '<div class="spinner-border text-primary" role="status">' +
+                '<span class="sr-only">Loading...</span>' +
+            '</div>' +
+            '<p class="mt-3 text-muted">Loading category tasks...</p>' +
+        '</div>'
+    );
+    
+    // Show the modal
+    $('#categoryCompletionTasksModal').modal('show');
+    
+    // Fetch category completion tasks
+    fetchCategoryCompletionTasks(categoryId);
+}
+
+// Function to fetch category completion tasks via AJAX
+function fetchCategoryCompletionTasks(categoryId) {
+    console.log('Fetching category completion tasks for categoryId:', categoryId);
+    
+    var ajaxData = {
+        categoryId: categoryId
+    };
+    
+    // Add CSRF token if available
+    if (KanbanBoard.config.csrfParam && KanbanBoard.config.csrfToken) {
+        ajaxData[KanbanBoard.config.csrfParam] = KanbanBoard.config.csrfToken;
+        console.log('CSRF token added:', KanbanBoard.config.csrfParam, '=', KanbanBoard.config.csrfToken.substring(0, 20) + '...');
+    }
+    
+    console.log('AJAX URL:', KanbanBoard.config.getCategoryCompletionTasks);
+    console.log('AJAX Data:', ajaxData);
+    
+    $.ajax({
+        url: KanbanBoard.config.getCategoryCompletionTasks,
+        type: 'POST',
+        data: ajaxData,
+        dataType: 'json',
+        beforeSend: function(xhr) {
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        },
+        success: function(response) {
+            console.log('Category completion tasks response:', response);
+            if (response.success) {
+                renderCategoryCompletionTasks(response.tasks, response.completed_count, response.not_completed_count);
+            } else {
+                showCategoryCompletionTasksError(response.message || 'Failed to load category tasks');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching category completion tasks:', error);
+            console.error('XHR Status:', xhr.status);
+            console.error('XHR Response:', xhr.responseText);
+            
+            if (xhr.status === 403) {
+                showCategoryCompletionTasksError('Access denied. Please refresh the page and try again.');
+            } else {
+                showCategoryCompletionTasksError('Network error occurred while loading category tasks');
+            }
+        }
+    });
+}
+
+// Function to render category completion tasks in the modal
+function renderCategoryCompletionTasks(tasks, completedCount, notCompletedCount) {
+    var container = $('#categoryCompletionTasksModal .modal-body');
+    
+    // Update summary
+    $('#categoryCompletionTasksCount').text(completedCount + ' completed, ' + notCompletedCount + ' not completed');
+    
+    var html = '<div class="completion-tasks-container">';
+    
+    // Not Completed Column
+    html += '<div class="completion-tasks-column">';
+    html += '    <div class="completion-tasks-column-header not-completed">';
+    html += '        <span><i class="fa fa-clock"></i> Not Completed</span>';
+    html += '        <span class="completion-count-badge not-completed">' + notCompletedCount + '</span>';
+    html += '    </div>';
+    html += '    <div class="completion-tasks-column-body">';
+    
+    if (tasks.not_completed && tasks.not_completed.length > 0) {
+        tasks.not_completed.forEach(function(task) {
+            html += renderCompletionTaskCard(task, 'not-completed');
+        });
+    } else {
+        html += '<div class="text-center text-muted py-4">';
+        html += '    <i class="fa fa-check-circle fa-2x mb-2"></i>';
+        html += '    <p>All tasks in this category are completed!</p>';
+        html += '</div>';
+    }
+    
+    html += '    </div>';
+    html += '</div>';
+    
+    // Completed Column
+    html += '<div class="completion-tasks-column">';
+    html += '    <div class="completion-tasks-column-header completed">';
+    html += '        <span><i class="fa fa-check-circle"></i> Completed</span>';
+    html += '        <span class="completion-count-badge completed">' + completedCount + '</span>';
+    html += '    </div>';
+    html += '    <div class="completion-tasks-column-body">';
+    
+    if (tasks.completed && tasks.completed.length > 0) {
+        tasks.completed.forEach(function(task) {
+            html += renderCompletionTaskCard(task, 'completed');
+        });
+    } else {
+        html += '<div class="text-center text-muted py-4">';
+        html += '    <i class="fa fa-hourglass-half fa-2x mb-2"></i>';
+        html += '    <p>No completed tasks in this category yet.</p>';
+        html += '</div>';
+    }
+    
+    html += '    </div>';
+    html += '</div>';
+    html += '</div>';
+    
+    container.html(html);
+}
+
+// Function to show error in category completion tasks modal
+function showCategoryCompletionTasksError(message) {
+    $('#categoryCompletionTasksModal .modal-body').html(
+        '<div class="alert alert-danger" role="alert">' +
+            '<i class="fa fa-exclamation-triangle"></i> ' +
+            '<strong>Error:</strong> ' + htmlEscape(message) +
+        '</div>'
+    );
 }
 
 function htmlEscape(str) {

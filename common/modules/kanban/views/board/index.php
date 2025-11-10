@@ -474,6 +474,129 @@ $this->registerCss('
         box-shadow: 0 2px 12px rgba(0,0,0,0.2);
     }
 
+    /* Completion Tasks Modal Styles */
+    .completion-tasks-container {
+        display: flex;
+        gap: 20px;
+        max-height: 60vh;
+        overflow: hidden;
+    }
+    
+    .completion-tasks-column {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .completion-tasks-column-header {
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border-radius: 8px 8px 0 0;
+        border: 1px solid #dee2e6;
+        border-bottom: none;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .completion-tasks-column-header.completed {
+        background: #d4edda;
+        color: #155724;
+        border-color: #c3e6cb;
+    }
+    
+    .completion-tasks-column-header.not-completed {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffeaa7;
+    }
+    
+    .completion-tasks-column-body {
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+        max-height: 50vh;
+        overflow-y: auto;
+        padding: 15px;
+        background: white;
+    }
+    
+    .completion-task-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border-left: 4px solid #dee2e6;
+    }
+    
+    .completion-task-card.completed {
+        border-left-color: #28a745;
+        background: #f8fff9;
+    }
+    
+    .completion-task-card.not-completed {
+        border-left-color: #ffc107;
+        background: #fffef5;
+    }
+    
+    .completion-task-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .completion-task-title {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 5px;
+        font-size: 14px;
+    }
+    
+    .completion-task-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #6c757d;
+    }
+    
+    .completion-task-status {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .completion-task-status.completed {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .completion-task-status.not-completed {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .completion-count-badge {
+        background: #6c757d;
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .completion-count-badge.completed {
+        background: #28a745;
+    }
+    
+    .completion-count-badge.not-completed {
+        background: #ffc107;
+        color: #000;
+    }
+
     /* Deadline Tasks Modal Styles */
     .deadline-tasks-grid {
         display: grid;
@@ -711,6 +834,15 @@ $this->registerCss('
 ');
 
 $statistics = KanbanBoard::getStatistics();
+$categoryStatistics = KanbanBoard::getCategoryStatistics();
+
+// Merge both statistics with proper sorting
+$allStatistics = array_merge($statistics, $categoryStatistics);
+uasort($allStatistics, function($a, $b) {
+    $sortA = isset($a['sort_order']) ? $a['sort_order'] : 0;
+    $sortB = isset($b['sort_order']) ? $b['sort_order'] : 0;
+    return $sortA - $sortB;
+});
 ?>
 
 <div class="kanban-board">
@@ -730,9 +862,9 @@ $statistics = KanbanBoard::getStatistics();
             </div>
         </div>
         
-        <!-- Deadline Statistics Cards (Based on Task Color Settings) -->
+        <!-- Deadline and Category Statistics Cards -->
         <div class="kanban-stats">
-            <?php foreach ($statistics as $key => $stat): ?>
+            <?php foreach ($allStatistics as $key => $stat): ?>
                 <div class="stat-card stat-<?= $key ?>" 
                      data-category="<?= Html::encode($key) ?>"
                      style="border-left-color: <?= $stat['color'] ?>">
@@ -1143,6 +1275,36 @@ $statistics = KanbanBoard::getStatistics();
     </div>
 </div>
 
+<!-- Completion Tasks Modal -->
+<div id="completionTasksModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="completionTasksModalLabel">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="completionTasksModalLabel">
+                    <i class="fa fa-check-circle text-success"></i> Task Completion Status
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="completionTasksContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading tasks...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="completion-tasks-summary">
+                    <span id="completionTasksCount">0 tasks found</span>
+                </div>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Deadline Tasks Modal -->
 <div id="deadlineTasksModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="deadlineTasksModalLabel">
     <div class="modal-dialog modal-xl" role="document">
@@ -1167,6 +1329,37 @@ $statistics = KanbanBoard::getStatistics();
             <div class="modal-footer">
                 <div class="deadline-tasks-summary">
                     <span id="deadlineTasksCount">0 tasks found</span>
+                </div>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Category Completion Tasks Modal -->
+<div id="categoryCompletionTasksModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="categoryCompletionTasksModalLabel">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="categoryCompletionTasksModalLabel">
+                    <i class="fa fa-folder" id="categoryCompletionTasksIcon"></i>
+                    <span id="categoryCompletionTasksTitle">Category Tasks</span>
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="categoryCompletionTasksContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading category tasks...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="category-completion-tasks-summary">
+                    <span id="categoryCompletionTasksCount">0 tasks found</span>
                 </div>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
@@ -1201,6 +1394,8 @@ $this->registerJs("
             imageListUrl: '" . Url::to(['/taskmonitor/image/list']) . "',
             imageDeleteUrl: '" . Url::to(['/taskmonitor/image/delete']) . "',
             getDeadlineTasks: '" . Url::to(['get-deadline-tasks']) . "',
+            getCompletionTasks: '" . Url::to(['get-completion-tasks']) . "',
+            getCategoryCompletionTasks: '" . Url::to(['get-category-completion-tasks']) . "',
             csrfToken: '" . Yii::$app->request->csrfToken . "',
             csrfParam: '" . Yii::$app->request->csrfParam . "'
         });

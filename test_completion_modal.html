@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Completion Statistics Modal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 4px solid #28a745;
+        }
+        
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .stat-label {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        /* Completion Tasks Modal Styles */
+        .completion-tasks-container {
+            display: flex;
+            gap: 20px;
+            max-height: 60vh;
+            overflow: hidden;
+        }
+        
+        .completion-tasks-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .completion-tasks-column-header {
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid #dee2e6;
+            border-bottom: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .completion-tasks-column-header.completed {
+            background: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        
+        .completion-tasks-column-header.not-completed {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
+        }
+        
+        .completion-tasks-column-body {
+            border: 1px solid #dee2e6;
+            border-radius: 0 0 8px 8px;
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 15px;
+            background: white;
+        }
+        
+        .completion-task-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border-left: 4px solid #dee2e6;
+        }
+        
+        .completion-task-card.completed {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .completion-task-card.not-completed {
+            border-left-color: #ffc107;
+            background: #fffef5;
+        }
+        
+        .completion-task-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .completion-task-title {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .completion-task-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .completion-task-status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .completion-task-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .completion-task-status.not-completed {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .completion-count-badge {
+            background: #6c757d;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        .completion-count-badge.completed {
+            background: #28a745;
+        }
+        
+        .completion-count-badge.not-completed {
+            background: #ffc107;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Completion Statistics Modal</h1>
+    
+    <p>Click the statistics card below to test the completion tasks modal:</p>
+    
+    <div class="stat-card" data-category="completion_status">
+        <div class="stat-number">5</div>
+        <div class="stat-label">
+            <i class="fa fa-check-circle"></i> Task Completion
+        </div>
+    </div>
+    
+    <!-- Completion Tasks Modal -->
+    <div id="completionTasksModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="completionTasksModalLabel">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="completionTasksModalLabel">
+                        <i class="fa fa-check-circle text-success"></i> Task Completion Status
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="completionTasksContent">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading tasks...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="completion-tasks-summary">
+                        <span id="completionTasksCount">0 tasks found</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Mock KanbanBoard config
+        var KanbanBoard = {
+            config: {
+                getCompletionTasks: '/index.php?r=kanban/board/get-completion-tasks'
+            }
+        };
+        
+        // Sample data for testing
+        var sampleData = {
+            success: true,
+            tasks: {
+                completed: [
+                    {
+                        id: 17,
+                        title: "Sample Completed Task 1",
+                        description: "This is a completed task",
+                        status: "completed",
+                        category_name: "Development",
+                        color: "#007bff",
+                        icon: "fas fa-code"
+                    },
+                    {
+                        id: 18,
+                        title: "Sample Completed Task 2", 
+                        description: "Another completed task",
+                        status: "completed",
+                        category_name: "Testing",
+                        color: "#28a745",
+                        icon: "fas fa-check"
+                    }
+                ],
+                not_completed: [
+                    {
+                        id: 19,
+                        title: "Sample Pending Task 1",
+                        description: "This task is pending",
+                        status: "pending",
+                        category_name: "Development",
+                        color: "#ffc107", 
+                        icon: "fas fa-clock"
+                    },
+                    {
+                        id: 20,
+                        title: "Sample In Progress Task",
+                        description: "This task is in progress", 
+                        status: "ongoing",
+                        category_name: "Testing",
+                        color: "#17a2b8",
+                        icon: "fas fa-spinner"
+                    },
+                    {
+                        id: 21,
+                        title: "Sample To Do Task",
+                        description: "This task is to do",
+                        status: "pending", 
+                        category_name: "Design",
+                        color: "#6f42c1",
+                        icon: "fas fa-paint-brush"
+                    }
+                ]
+            },
+            completed_count: 2,
+            not_completed_count: 3,
+            total_count: 5
+        };
+        
+        // Event handler for stat card click
+        $(document).on('click', '.stat-card', function(e) {
+            e.preventDefault();
+            var categoryKey = $(this).data('category');
+            
+            if (categoryKey === 'completion_status') {
+                showCompletionTasksModal();
+            }
+        });
+        
+        // Function to show completion tasks modal
+        function showCompletionTasksModal() {
+            // Show loading state
+            $('#completionTasksContent').html(
+                '<div class="text-center py-4">' +
+                    '<div class="spinner-border text-primary" role="status">' +
+                        '<span class="sr-only">Loading...</span>' +
+                    '</div>' +
+                    '<p class="mt-3 text-muted">Loading tasks...</p>' +
+                '</div>'
+            );
+            
+            // Show the modal
+            $('#completionTasksModal').modal('show');
+            
+            // Simulate loading delay, then show data
+            setTimeout(function() {
+                renderCompletionTasks(sampleData.tasks, sampleData.completed_count, sampleData.not_completed_count);
+            }, 1000);
+        }
+        
+        // Function to render completion tasks in the modal 
+        function renderCompletionTasks(tasks, completedCount, notCompletedCount) {
+            var container = $('#completionTasksModal .modal-body');
+            
+            // Update summary
+            $('#completionTasksCount').text(completedCount + ' completed, ' + notCompletedCount + ' not completed');
+            
+            var html = '<div class="completion-tasks-container">';
+            
+            // Not Completed Column
+            html += '<div class="completion-tasks-column">';
+            html += '    <div class="completion-tasks-column-header not-completed">';
+            html += '        <span><i class="fa fa-clock"></i> Not Completed</span>';
+            html += '        <span class="completion-count-badge not-completed">' + notCompletedCount + '</span>';
+            html += '    </div>';
+            html += '    <div class="completion-tasks-column-body">';
+            
+            if (tasks.not_completed && tasks.not_completed.length > 0) {
+                tasks.not_completed.forEach(function(task) {
+                    html += renderCompletionTaskCard(task, 'not-completed');
+                });
+            } else {
+                html += '<div class="text-center text-muted py-4">';
+                html += '    <i class="fa fa-check-circle fa-2x mb-2"></i>';
+                html += '    <p>All tasks are completed!</p>';
+                html += '</div>';
+            }
+            
+            html += '    </div>';
+            html += '</div>';
+            
+            // Completed Column
+            html += '<div class="completion-tasks-column">';
+            html += '    <div class="completion-tasks-column-header completed">';
+            html += '        <span><i class="fa fa-check-circle"></i> Completed</span>';
+            html += '        <span class="completion-count-badge completed">' + completedCount + '</span>';
+            html += '    </div>';
+            html += '    <div class="completion-tasks-column-body">';
+            
+            if (tasks.completed && tasks.completed.length > 0) {
+                tasks.completed.forEach(function(task) {
+                    html += renderCompletionTaskCard(task, 'completed');
+                });
+            } else {
+                html += '<div class="text-center text-muted py-4">';
+                html += '    <i class="fa fa-hourglass-half fa-2x mb-2"></i>';
+                html += '    <p>No completed tasks yet.</p>';
+                html += '</div>';
+            }
+            
+            html += '    </div>';
+            html += '</div>';
+            html += '</div>';
+            
+            container.html(html);
+        }
+        
+        // Function to render individual completion task card
+        function renderCompletionTaskCard(task, type) {
+            var html = '<div class="completion-task-card ' + type + '" onclick="alert(\'Task ' + task.id + ' clicked - would emphasize in board\')">';
+            html += '    <div class="completion-task-title">' + htmlEscape(task.title) + '</div>';
+            html += '    <div class="completion-task-meta">';
+            html += '        <span class="completion-task-status ' + type + '">' + htmlEscape(task.status) + '</span>';
+            
+            if (task.category_name) {
+                html += '        <span style="color: ' + (task.color || '#6c757d') + '">';
+                html += '            <i class="' + (task.icon || 'fas fa-circle') + '"></i> ';
+                html += '            ' + htmlEscape(task.category_name);
+                html += '        </span>';
+            }
+            
+            html += '    </div>';
+            html += '</div>';
+            
+            return html;
+        }
+        
+        function htmlEscape(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+    </script>
+</body>
+</html>

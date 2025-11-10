@@ -99,6 +99,10 @@ class KanbanBoard
             ];
         }
         
+        // Add completion statistics
+        $completionStats = self::getCompletionStatistics();
+        $statistics = array_merge($statistics, $completionStats);
+        
         // Sort statistics by sort_order
         uasort($statistics, function($a, $b) {
             if ($a['sort_order'] == $b['sort_order']) {
@@ -108,6 +112,166 @@ class KanbanBoard
         });
         
         return $statistics;
+    }
+
+    /**
+     * Get completion statistics for the board
+     * @return array
+     */
+    public static function getCompletionStatistics()
+    {
+        // Count completed tasks
+        $completedCount = Task::find()
+            ->where(['status' => Task::STATUS_COMPLETED])
+            ->count();
+            
+        // Count not completed tasks
+        $notCompletedCount = Task::find()
+            ->where(['!=', 'status', Task::STATUS_COMPLETED])
+            ->count();
+            
+        return [
+            'completion_status' => [
+                'count' => $completedCount + $notCompletedCount,
+                'completed_count' => $completedCount,
+                'not_completed_count' => $notCompletedCount,
+                'name' => 'Task Completion',
+                'color' => '#28a745',
+                'icon' => 'fa-check-circle',
+                'display_name' => 'Task Completion',
+                'sort_order' => 999, // Put it at the end
+            ]
+        ];
+    }
+
+    /**
+     * Get completion tasks by status
+     * @return array
+     */
+    public static function getCompletionTasks()
+    {
+        // Get completed tasks
+        $completedTasks = Task::find()
+            ->where(['status' => Task::STATUS_COMPLETED])
+            ->with(['category', 'images'])
+            ->orderBy(['completed_at' => SORT_DESC, 'created_at' => SORT_DESC])
+            ->all();
+            
+        // Get not completed tasks
+        $notCompletedTasks = Task::find()
+            ->where(['!=', 'status', Task::STATUS_COMPLETED])
+            ->with(['category', 'images'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->all();
+            
+        return [
+            'completed' => $completedTasks,
+            'not_completed' => $notCompletedTasks
+        ];
+    }
+
+    /**
+     * Get category-based statistics for the board
+     * @return array
+     */
+    public static function getCategoryStatistics()
+    {
+        $categories = TaskCategory::find()->all();
+        $statistics = [];
+        
+        foreach ($categories as $category) {
+            // Count completed tasks in this category
+            $completedCount = Task::find()
+                ->where(['category_id' => $category->id])
+                ->andWhere(['status' => Task::STATUS_COMPLETED])
+                ->count();
+                
+            // Count not completed tasks in this category
+            $notCompletedCount = Task::find()
+                ->where(['category_id' => $category->id])
+                ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])
+                ->count();
+                
+            $totalCount = $completedCount + $notCompletedCount;
+            
+            if ($totalCount > 0) { // Only include categories that have tasks
+                $statistics['category_' . $category->id] = [
+                    'count' => $totalCount,
+                    'completed_count' => $completedCount,
+                    'not_completed_count' => $notCompletedCount,
+                    'category_id' => $category->id,
+                    'name' => $category->name,
+                    'color' => $category->color ?: '#6c757d',
+                    'icon' => $category->icon ?: 'fa-folder',
+                    'display_name' => $category->name . ' Tasks',
+                    'sort_order' => 1000 + $category->id, // Put after completion stats
+                ];
+            }
+        }
+        
+        // Add "No Category" tasks if they exist
+        $noCategoryCompleted = Task::find()
+            ->where(['category_id' => null])
+            ->andWhere(['status' => Task::STATUS_COMPLETED])
+            ->count();
+            
+        $noCategoryNotCompleted = Task::find()
+            ->where(['category_id' => null])
+            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])
+            ->count();
+            
+        $noCategoryTotal = $noCategoryCompleted + $noCategoryNotCompleted;
+        
+        if ($noCategoryTotal > 0) {
+            $statistics['category_none'] = [
+                'count' => $noCategoryTotal,
+                'completed_count' => $noCategoryCompleted,
+                'not_completed_count' => $noCategoryNotCompleted,
+                'category_id' => null,
+                'name' => 'No Category',
+                'color' => '#6c757d',
+                'icon' => 'fa-question-circle',
+                'display_name' => 'Uncategorized Tasks',
+                'sort_order' => 2000, // Put at the end
+            ];
+        }
+        
+        return $statistics;
+    }
+
+    /**
+     * Get tasks by category and completion status
+     * @param int|null $categoryId
+     * @return array
+     */
+    public static function getCategoryCompletionTasks($categoryId = null)
+    {
+        $baseQuery = Task::find()->with(['category', 'images']);
+        
+        if ($categoryId === null) {
+            $baseQuery->where(['category_id' => null]);
+        } else {
+            $baseQuery->where(['category_id' => $categoryId]);
+        }
+        
+        // Get completed tasks
+        $completedQuery = clone $baseQuery;
+        $completedTasks = $completedQuery
+            ->andWhere(['status' => Task::STATUS_COMPLETED])
+            ->orderBy(['completed_at' => SORT_DESC, 'created_at' => SORT_DESC])
+            ->all();
+            
+        // Get not completed tasks
+        $notCompletedQuery = clone $baseQuery;
+        $notCompletedTasks = $notCompletedQuery
+            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->all();
+            
+        return [
+            'completed' => $completedTasks,
+            'not_completed' => $notCompletedTasks
+        ];
     }
 
     /**

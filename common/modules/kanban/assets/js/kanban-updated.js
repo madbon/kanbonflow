@@ -684,6 +684,12 @@ var KanbanBoard = {
         $('#editTaskPriority').val(task.priority);
         $('#editTaskDeadline').val(task.deadline);
         $('#editTaskAssignedTo').val(task.assigned_to);
+        // Explicitly handle the include_in_export value to ensure 0 is properly selected
+        var exportValue = '1'; // default
+        if (task.include_in_export !== undefined && task.include_in_export !== null) {
+            exportValue = String(task.include_in_export);
+        }
+        $('#editTaskIncludeInExport').val(exportValue);
         
         // Show modal
         $('#editTaskModal').modal('show');

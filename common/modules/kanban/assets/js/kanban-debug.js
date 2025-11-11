@@ -176,6 +176,48 @@ var KanbanBoard = {
             self.deleteChecklistItem(itemId);
         });
 
+        // Interactive checklist in task details modal
+        $(document).on('click', '.checklist-checkbox-details', function() {
+            var itemId = $(this).closest('.checklist-item-interactive').data('item-id');
+            self.toggleChecklistItemInDetails(itemId);
+        });
+
+        // Add Step button in task details modal
+        $(document).on('click', '#addStepInDetailsBtn', function() {
+            $('#addStepForm').show();
+            $('#newStepInput').focus();
+            $(this).hide();
+        });
+
+        // Save new step in task details modal
+        $(document).on('click', '#saveNewStepBtn', function() {
+            var stepText = $('#newStepInput').val().trim();
+            if (stepText) {
+                var taskId = $('#taskDetailsModal').data('task-id');
+                if (taskId) {
+                    self.addChecklistItemInDetails(taskId, stepText);
+                }
+            }
+        });
+
+        // Cancel new step in task details modal
+        $(document).on('click', '#cancelNewStepBtn', function() {
+            $('#addStepForm').hide();
+            $('#newStepInput').val('');
+            $('#addStepInDetailsBtn').show();
+        });
+
+        // Handle Enter key in step input
+        $(document).on('keydown', '#newStepInput', function(e) {
+            if (e.which === 13) { // Enter key
+                e.preventDefault();
+                $('#saveNewStepBtn').click();
+            } else if (e.which === 27) { // Escape key
+                e.preventDefault();
+                $('#cancelNewStepBtn').click();
+            }
+        });
+
         // Task details modal buttons
         $('#editTaskFromDetails').on('click', function() {
             var taskId = $(this).data('task-id');
@@ -501,6 +543,9 @@ var KanbanBoard = {
                 if (response.success && response.task) {
                     self.renderTaskDetails(response.task);
                     
+                    // Load and render checklist for this task
+                    self.loadTaskChecklistForDetails(taskId);
+                    
                     // Show action buttons
                     $('#editTaskFromDetails, #deleteTaskFromDetails').show().data('task-id', taskId);
                     
@@ -588,6 +633,10 @@ var KanbanBoard = {
                         '<div class="task-description">' +
                             '<h6>Description:</h6>' +
                             '<div class="description-content">' + self.formatDescription(task.description) + '</div>' +
+                        '</div>' +
+                        
+                        '<div id="taskDetailsChecklist" class="task-checklist-section">' +
+                            '<!-- Checklist will be loaded here -->' +
                         '</div>' +
                     '</div>' +
                     
@@ -940,6 +989,236 @@ var KanbanBoard = {
                     self.showNotification('Failed to delete step', 'error');
                 }
             });
+        }
+    },
+
+    /**
+     * Render checklist items in the task details modal (viewing mode)
+     */
+    renderChecklistForDetails: function(checklist) {
+        if (!checklist || checklist.length === 0) {
+            return '';
+        }
+
+        var progressHtml = '';
+        var totalItems = checklist.length;
+        var completedItems = 0;
+        
+        // Calculate progress
+        for (var i = 0; i < checklist.length; i++) {
+            if (checklist[i].is_completed) {
+                completedItems++;
+            }
+        }
+        
+        var percentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+        
+        if (totalItems > 0) {
+            progressHtml = 
+                '<div class="checklist-progress mb-3" id="detailsChecklistProgress">' +
+                    '<div class="progress">' +
+                        '<div class="progress-bar bg-success" style="width: ' + percentage + '%"></div>' +
+                    '</div>' +
+                    '<small class="text-muted">' + completedItems + ' of ' + totalItems + ' steps completed (' + percentage + '%)</small>' +
+                '</div>';
+        }
+
+        // Build items HTML
+        var itemsHtml = '';
+        for (var i = 0; i < checklist.length; i++) {
+            var item = checklist[i];
+            var isCompleted = item.is_completed;
+            var itemClass = isCompleted ? 'checklist-item-interactive completed' : 'checklist-item-interactive';
+            var textStyle = isCompleted ? 'text-decoration: line-through; color: #6c757d;' : '';
+            
+            itemsHtml += 
+                '<div class="' + itemClass + '" data-item-id="' + item.id + '">' +
+                    '<div class="form-check">' +
+                        '<input type="checkbox" class="form-check-input checklist-checkbox-details" ' + (isCompleted ? 'checked' : '') + '>' +
+                        '<label class="form-check-label checklist-text-display" style="' + textStyle + '">' +
+                            item.step_text +
+                            (isCompleted && item.completed_at ? 
+                                '<br><small class="text-muted">Completed ' + item.completed_at + 
+                                (item.completed_by_name ? ' by ' + item.completed_by_name : '') + '</small>'
+                            : '') +
+                        '</label>' +
+                    '</div>' +
+                '</div>';
+        }
+
+        return (
+            '<div class="task-checklist mt-4">' +
+                '<div class="d-flex justify-content-between align-items-center mb-3">' +
+                    '<h6 class="mb-0"><i class="fa fa-list-ul"></i> Checklist</h6>' +
+                    '<div>' +
+                        '<button class="btn btn-sm btn-success mr-2" id="addStepInDetailsBtn" title="Add new step">' +
+                            '<i class="fa fa-plus"></i> Add Step' +
+                        '</button>' +
+                        '<button class="btn btn-sm btn-outline-primary" onclick="KanbanBoard.openTaskForEditing()" title="Edit checklist">' +
+                            '<i class="fa fa-edit"></i> Edit' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+                progressHtml +
+                '<div class="checklist-items-interactive" id="detailsChecklistItems">' +
+                    itemsHtml +
+                '</div>' +
+                '<div class="add-step-form mt-3" id="addStepForm" style="display: none;">' +
+                    '<div class="input-group">' +
+                        '<input type="text" class="form-control" id="newStepInput" placeholder="Enter step description..." maxlength="1000">' +
+                        '<div class="input-group-append">' +
+                            '<button class="btn btn-success" type="button" id="saveNewStepBtn" title="Save step">' +
+                                '<i class="fa fa-check"></i>' +
+                            '</button>' +
+                            '<button class="btn btn-secondary" type="button" id="cancelNewStepBtn" title="Cancel">' +
+                                '<i class="fa fa-times"></i>' +
+                            '</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>'
+        );
+    },
+
+    /**
+     * Load checklist items for task details view
+     */
+    loadTaskChecklistForDetails: function(taskId) {
+        var self = this;
+        
+        $.ajax({
+            url: self.config.getTaskChecklistUrl,
+            method: 'GET',
+            data: { taskId: taskId },
+            success: function(response) {
+                if (response.success && response.items && response.items.length > 0) {
+                    // Render checklist in the details section
+                    var checklistHtml = self.renderChecklistForDetails(response.items);
+                    $('#taskDetailsChecklist').html(checklistHtml);
+                } else {
+                    // Hide the checklist section if no items
+                    $('#taskDetailsChecklist').html('');
+                }
+            },
+            error: function() {
+                console.log('Failed to load checklist for details view');
+                $('#taskDetailsChecklist').html('');
+            }
+        });
+    },
+
+    /**
+     * Toggle checklist item in details view
+     */
+    toggleChecklistItemInDetails: function(itemId) {
+        var self = this;
+        
+        $.ajax({
+            url: self.config.toggleChecklistItemUrl,
+            method: 'POST',
+            data: {
+                itemId: itemId,
+                [self.config.csrfParam]: self.config.csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    var item = $('.checklist-item-interactive[data-item-id="' + itemId + '"]');
+                    var checkbox = item.find('.checklist-checkbox-details');
+                    var textSpan = item.find('.checklist-text-display');
+                    
+                    if (response.is_completed) {
+                        item.addClass('completed');
+                        checkbox.prop('checked', true);
+                        textSpan.css({
+                            'text-decoration': 'line-through',
+                            'color': '#6c757d'
+                        });
+                        
+                        // Add completion info if available
+                        if (response.completed_at) {
+                            var completionInfo = '<br><small class="text-muted">Completed ' + response.completed_at + 
+                                (response.completed_by_name ? ' by ' + response.completed_by_name : '') + '</small>';
+                            textSpan.append(completionInfo);
+                        }
+                    } else {
+                        item.removeClass('completed');
+                        checkbox.prop('checked', false);
+                        textSpan.css({
+                            'text-decoration': 'none',
+                            'color': 'inherit'
+                        });
+                        
+                        // Remove completion info
+                        item.find('small').remove();
+                    }
+                    
+                    // Update progress bar
+                    if (response.progress) {
+                        $('#detailsChecklistProgress .progress-bar').css('width', response.progress.percentage + '%');
+                        $('#detailsChecklistProgress small').text(response.progress.completed + ' of ' + response.progress.total + ' steps completed (' + response.progress.percentage + '%)');
+                    }
+                    
+                    var status = response.is_completed ? 'completed' : 'marked incomplete';
+                    self.showNotification('Step ' + status, 'success');
+                } else {
+                    self.showNotification('Error: ' + response.message, 'error');
+                    // Revert checkbox state
+                    var checkbox = $('.checklist-item-interactive[data-item-id="' + itemId + '"] .checklist-checkbox-details');
+                    checkbox.prop('checked', !checkbox.prop('checked'));
+                }
+            },
+            error: function() {
+                self.showNotification('Failed to toggle step', 'error');
+                // Revert checkbox state
+                var checkbox = $('.checklist-item-interactive[data-item-id="' + itemId + '"] .checklist-checkbox-details');
+                checkbox.prop('checked', !checkbox.prop('checked'));
+            }
+        });
+    },
+
+    /**
+     * Add new checklist item from task details modal
+     */
+    addChecklistItemInDetails: function(taskId, stepText) {
+        var self = this;
+        
+        $.ajax({
+            url: self.config.addChecklistItemUrl,
+            method: 'POST',
+            data: {
+                taskId: taskId,
+                stepText: stepText,
+                [self.config.csrfParam]: self.config.csrfToken
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Hide the add form and reset
+                    $('#addStepForm').hide();
+                    $('#newStepInput').val('');
+                    $('#addStepInDetailsBtn').show();
+                    
+                    // Refresh the checklist in details view
+                    self.loadTaskChecklistForDetails(taskId);
+                    
+                    self.showNotification('Step added successfully', 'success');
+                } else {
+                    self.showNotification('Error: ' + response.message, 'error');
+                }
+            },
+            error: function() {
+                self.showNotification('Failed to add step', 'error');
+            }
+        });
+    },
+
+    /**
+     * Open task for editing from details modal
+     */
+    openTaskForEditing: function() {
+        var taskId = $('#taskDetailsModal').data('task-id');
+        if (taskId) {
+            $('#taskDetailsModal').modal('hide');
+            this.editTask(taskId);
         }
     },
 

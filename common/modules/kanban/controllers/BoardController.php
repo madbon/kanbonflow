@@ -608,6 +608,8 @@ class BoardController extends Controller
         $updatedAt = $task->updated_at ? date('M j, Y g:i A', $task->updated_at) : 'N/A';
         $deadline = $task->deadline ? date('M j, Y g:i A', $task->deadline) : 'No deadline';
         $completedAt = $task->completed_at ? date('M j, Y g:i A', $task->completed_at) : null;
+        $targetStartDate = $task->target_start_date ? date('M j, Y', $task->target_start_date) : null;
+        $targetEndDate = $task->target_end_date ? date('M j, Y', $task->target_end_date) : null;
 
         // Get priority and status labels from the Task model to ensure consistency
         $priorityLabels = Task::getPriorityOptions();
@@ -639,6 +641,10 @@ class BoardController extends Controller
                 'completed_at' => $completedAt,
                 'created_at' => $createdAt,
                 'updated_at' => $updatedAt,
+                'target_start_date' => $targetStartDate,
+                'target_end_date' => $targetEndDate,
+                'target_start_timestamp' => $task->target_start_date,
+                'target_end_timestamp' => $task->target_end_date,
                 'assigned_to' => $task->assigned_to,
                 'category' => $task->category ? [
                     'id' => $task->category->id,

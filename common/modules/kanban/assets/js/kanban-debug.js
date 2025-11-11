@@ -649,6 +649,20 @@ var KanbanBoard = {
                                 deadlineHtml +
                             '</div>' +
                             
+                            // Target dates section
+                            (task.target_start_date || task.target_end_date ? 
+                                '<div class="meta-item mb-2">' +
+                                    '<strong>Target Dates:</strong><br>' +
+                                    '<small class="text-info">' +
+                                        '<i class="fa fa-bullseye"></i> ' +
+                                        (task.target_start_date && task.target_end_date ? 
+                                            task.target_start_date + ' - ' + task.target_end_date :
+                                            (task.target_start_date ? 'From ' + task.target_start_date : 'Until ' + task.target_end_date)
+                                        ) +
+                                    '</small>' +
+                                '</div>'
+                            : '') +
+                            
                             '<div class="meta-item mb-2">' +
                                 '<strong>Created:</strong><br>' +
                                 '<small class="text-muted">' + task.created_at + '</small>' +

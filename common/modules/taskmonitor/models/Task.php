@@ -176,6 +176,17 @@ class Task extends \yii\db\ActiveRecord
     }
 
     /**
+     * Get the latest comment for this task
+     * @return TaskComment|null
+     */
+    public function getLatestComment()
+    {
+        return $this->hasOne(TaskComment::className(), ['task_id' => 'id'])
+            ->with(['user'])
+            ->orderBy(['created_at' => SORT_DESC]);
+    }
+
+    /**
      * Gets query for [[AssignedTo]] User.
      *
      * @return \yii\db\ActiveQuery

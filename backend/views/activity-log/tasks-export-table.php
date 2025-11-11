@@ -128,6 +128,24 @@ $this->title = 'Tasks Export Table';
             min-width: 120px;
         }
         
+        .last-comment {
+            font-size: 0.85rem;
+        }
+        
+        .comment-text {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #007bff;
+            line-height: 1.3;
+        }
+        
+        .comment-text a {
+            color: #007bff;
+            text-decoration: underline;
+        }
+        
         .print-button {
             position: fixed;
             top: 20px;
@@ -228,11 +246,12 @@ $this->title = 'Tasks Export Table';
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th style="width: 15%;">Task Category</th>
-                            <th style="width: 20%;">Task Title</th>
-                            <th style="width: 35%;">Task Description</th>
-                            <th style="width: 15%;">Last Updated</th>
-                            <th style="width: 15%;">Current Status</th>
+                            <th style="width: 12%;">Task Category</th>
+                            <th style="width: 18%;">Task Title</th>
+                            <th style="width: 30%;">Task Description</th>
+                            <th style="width: 25%;">Last Comment</th>
+                            <th style="width: 10%;">Last Updated</th>
+                            <th style="width: 10%;">Current Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -291,6 +310,43 @@ $this->title = 'Tasks Export Table';
                                             <i class="fa fa-user"></i> 
                                             Assigned to: <?= Html::encode($task->assignedTo->username) ?>
                                         </small>
+                                    <?php endif; ?>
+                                </td>
+                                
+                                <!-- Last Comment Column -->
+                                <td>
+                                    <?php if ($task->latestComment): ?>
+                                        <div class="last-comment">
+                                            <div class="comment-text">
+                                                <?php 
+                                                $commentText = Html::encode($task->latestComment->comment);
+                                                // Convert URLs to clickable links
+                                                $commentText = preg_replace(
+                                                    '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
+                                                    '<a href="$1" target="_blank">$1</a>',
+                                                    $commentText
+                                                );
+                                                // Limit comment length for display
+                                                if (strlen($commentText) > 150) {
+                                                    echo substr(nl2br($commentText), 0, 150) . '...';
+                                                } else {
+                                                    echo nl2br($commentText);
+                                                }
+                                                ?>
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="fa fa-user"></i> 
+                                                <?= $task->latestComment->user ? Html::encode($task->latestComment->user->username) : 'Unknown User' ?>
+                                                <br>
+                                                <i class="fa fa-clock"></i> 
+                                                <?= date('M j, Y g:i A', $task->latestComment->created_at) ?>
+                                            </small>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted text-center">
+                                            <i class="fa fa-comment-slash"></i><br>
+                                            <small>No comments</small>
+                                        </div>
                                     <?php endif; ?>
                                 </td>
                                 

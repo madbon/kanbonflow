@@ -614,7 +614,7 @@ class ActivityLogController extends Controller
         
         // Now build the main query to get tasks
         $query = Task::find()
-            ->with(['category', 'assignedTo', 'createdBy'])
+            ->with(['category', 'assignedTo', 'createdBy', 'latestComment'])
             ->where(['or', 
                 ['include_in_export' => 1], 
                 ['include_in_export' => null] // Include tasks where field is null (backwards compatibility)

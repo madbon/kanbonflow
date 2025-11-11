@@ -162,6 +162,15 @@ $this->title = 'Tasks Export Table';
             text-decoration: underline;
         }
         
+        .checklist-status .progress {
+            height: 18px;
+        }
+        
+        .checklist-status .progress-bar {
+            font-size: 0.75rem;
+            line-height: 18px;
+        }
+        
         .print-button {
             position: fixed;
             top: 20px;
@@ -262,12 +271,14 @@ $this->title = 'Tasks Export Table';
                 <table class="table table-hover">
                     <thead>
                         <tr>
-                            <th style="width: 12%;">Task Category</th>
-                            <th style="width: 18%;">Task Title</th>
-                            <th style="width: 30%;">Task Description</th>
-                            <th style="width: 25%;">Last Comment</th>
-                            <th style="width: 10%;">Last Updated</th>
-                            <th style="width: 10%;">Current Status</th>
+                            <th style="width: 10%;">Task Category</th>
+                            <th style="width: 15%;">Task Title</th>
+                            <th style="width: 20%;">Task Description</th>
+                            <th style="width: 15%;">Last History Description</th>
+                            <th style="width: 12%;">Steps Status</th>
+                            <th style="width: 18%;">Last Comment</th>
+                            <th style="width: 8%;">Last Updated</th>
+                            <th style="width: 8%;">Current Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -329,6 +340,64 @@ $this->title = 'Tasks Export Table';
                                     <?php endif; ?>
                                 </td>
                                 
+                                <!-- Last History Description Column -->
+                                <td>
+                                    <?php 
+                                    $extraData = isset($taskExtraData[$task->id]) ? $taskExtraData[$task->id] : null;
+                                    $lastHistoryDesc = $extraData ? $extraData['lastHistoryDescription'] : null;
+                                    ?>
+                                    <?php if ($lastHistoryDesc): ?>
+                                        <div class="task-description">
+                                            <?php 
+                                            $historyDesc = Html::encode($lastHistoryDesc);
+                                            // Convert URLs to clickable links
+                                            $historyDesc = preg_replace(
+                                                '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
+                                                '<a href="$1" target="_blank">$1</a>',
+                                                $historyDesc
+                                            );
+                                            // Limit description length for display
+                                            if (strlen($historyDesc) > 120) {
+                                                echo substr(nl2br($historyDesc), 0, 120) . '...';
+                                            } else {
+                                                echo nl2br($historyDesc);
+                                            }
+                                            ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted text-center">
+                                            <i class="fa fa-history"></i><br>
+                                            <small>No history</small>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+
+                                <!-- Steps Status Column -->
+                                <td>
+                                    <?php 
+                                    $checklistProgress = $extraData ? $extraData['checklistProgress'] : null;
+                                    ?>
+                                    <?php if ($checklistProgress && $checklistProgress['total'] > 0): ?>
+                                        <div class="checklist-status">
+                                            <div class="progress mb-2">
+                                                <div class="progress-bar <?= $checklistProgress['percentage'] == 100 ? 'bg-success' : 'bg-info' ?>" 
+                                                     style="width: <?= $checklistProgress['percentage'] ?>%">
+                                                    <?= $checklistProgress['percentage'] ?>%
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">
+                                                <i class="fa fa-check-circle"></i> 
+                                                <?= $checklistProgress['status'] ?>
+                                            </small>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-muted text-center">
+                                            <i class="fa fa-list"></i><br>
+                                            <small>No checklist</small>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+
                                 <!-- Last Comment Column -->
                                 <td>
                                     <?php if ($task->latestComment): ?>
@@ -343,8 +412,8 @@ $this->title = 'Tasks Export Table';
                                                     $commentText
                                                 );
                                                 // Limit comment length for display
-                                                if (strlen($commentText) > 150) {
-                                                    echo substr(nl2br($commentText), 0, 150) . '...';
+                                                if (strlen($commentText) > 100) {
+                                                    echo substr(nl2br($commentText), 0, 100) . '...';
                                                 } else {
                                                     echo nl2br($commentText);
                                                 }

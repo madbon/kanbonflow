@@ -614,7 +614,7 @@ class ActivityLogController extends Controller
         
         // Now build the main query to get tasks
         $query = Task::find()
-            ->with(['category', 'assignedTo', 'createdBy', 'latestComment'])
+            ->with(['category', 'assignedTo', 'createdBy', 'latestComment', 'checklistItems'])
             ->where(['or', 
                 ['include_in_export' => 1], 
                 ['include_in_export' => null] // Include tasks where field is null (backwards compatibility)
@@ -634,11 +634,45 @@ class ActivityLogController extends Controller
         // Get all tasks (limit to prevent memory issues)
         $tasks = $query->limit(500)->all();
         
+        // Prepare additional data for tasks
+        $taskExtraData = [];
+        
+        foreach ($tasks as $task) {
+            // Get the last description from task_history
+            $lastHistory = TaskHistory::find()
+                ->where(['task_id' => $task->id])
+                ->andWhere(['!=', 'description', ''])
+                ->orderBy(['created_at' => SORT_DESC])
+                ->one();
+            
+            // Calculate checklist progress
+            $checklistItems = $task->checklistItems;
+            $totalItems = count($checklistItems);
+            $completedItems = 0;
+            
+            foreach ($checklistItems as $item) {
+                if ($item->is_completed) {
+                    $completedItems++;
+                }
+            }
+            
+            $taskExtraData[$task->id] = [
+                'lastHistoryDescription' => $lastHistory ? $lastHistory->description : null,
+                'checklistProgress' => [
+                    'total' => $totalItems,
+                    'completed' => $completedItems,
+                    'percentage' => $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0,
+                    'status' => $totalItems == 0 ? 'No checklist' : ($completedItems == $totalItems ? 'All completed' : "$completedItems of $totalItems completed")
+                ]
+            ];
+        }
+        
         // Set the layout to blank for clean table display
         $this->layout = false;
         
         return $this->render('tasks-export-table', [
             'tasks' => $tasks,
+            'taskExtraData' => $taskExtraData,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,

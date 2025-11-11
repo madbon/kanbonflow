@@ -921,9 +921,9 @@ uasort($allStatistics, function($a, $b) {
                 <button class="btn btn-secondary btn-add-column" data-toggle="modal" data-target="#addColumnModal">
                     <i class="fa fa-columns"></i> Add Column
                 </button>
-                <button class="btn btn-info btn-debug-positions" onclick="debugPositions()">
+                <!-- <button class="btn btn-info btn-debug-positions" onclick="debugPositions()">
                     <i class="fa fa-bug"></i> Debug Positions
-                </button>
+                </button> -->
             </div>
         </div>
         

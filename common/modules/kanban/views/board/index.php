@@ -207,6 +207,43 @@ $this->registerCss('
         background: transparent;
         border-radius: 8px;
         position: relative;
+        word-wrap: break-word;
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+    
+    /* URL styling in task cards */
+    .task-url {
+        color: #007bff !important;
+        text-decoration: none;
+        font-size: 11px;
+        display: block;
+        max-width: 100%;
+        word-break: break-all;
+        overflow-wrap: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin: 2px 0;
+    }
+    
+    .task-url:hover {
+        color: #0056b3 !important;
+        text-decoration: underline;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+    }
+    
+    /* Ensure task cards do not overflow */
+    .kanban-task .task-content {
+        overflow: hidden;
+    }
+    
+    .kanban-task .task-content p {
+        margin-bottom: 8px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 
     .task-description h6 {
@@ -944,7 +981,20 @@ uasort($allStatistics, function($a, $b) {
                                 <div class="task-content">
                                     <h4 class="task-title"><?= Html::encode($task->title) ?></h4>
                                     <?php if ($task->description): ?>
-                                        <p class="task-description"><?= Html::encode(substr($task->description, 0, 100)) ?><?= strlen($task->description) > 100 ? '...' : '' ?></p>
+                                        <?php
+                                        $shortDescription = substr($task->description, 0, 100);
+                                        if (strlen($task->description) > 100) {
+                                            $shortDescription .= '...';
+                                        }
+                                        
+                                        // Convert URLs to clickable links
+                                        $shortDescription = preg_replace(
+                                            '/(https?:\/\/[^\s]+)/',
+                                            '<a href="$1" target="_blank" rel="noopener" class="task-url">$1</a>',
+                                            Html::encode($shortDescription)
+                                        );
+                                        ?>
+                                        <p class="task-description"><?= $shortDescription ?></p>
                                     <?php endif; ?>
                                 </div>
                                 

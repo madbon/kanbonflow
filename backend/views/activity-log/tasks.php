@@ -59,6 +59,16 @@ $this->registerCss("
         white-space: normal;
         max-width: 350px;
     }
+    .modal-url {
+        color: #007bff;
+        text-decoration: none;
+        word-break: break-all;
+        display: inline-block;
+    }
+    .modal-url:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
 ");
 
 $this->registerJs("
@@ -134,7 +144,10 @@ $this->registerJs("
         
         html += '<div class=\"mb-3\">';
         html += '<h6><i class=\"fas fa-align-left\"></i> Description</h6>';
-        html += '<div class=\"border p-3 bg-light\">' + (task.description || 'No description provided') + '</div>';
+        var description = task.description || 'No description provided';
+        // Convert URLs to clickable links
+        description = description.replace(/(https?:\/\/[^\s]+)/g, '<a href=\"$1\" target=\"_blank\" rel=\"noopener\" class=\"modal-url\">$1</a>');
+        html += '<div class=\"border p-3 bg-light\" style=\"word-wrap: break-word; overflow-wrap: break-word;\">' + description + '</div>';
         html += '</div>';
         
         html += '<div class=\"row\">';

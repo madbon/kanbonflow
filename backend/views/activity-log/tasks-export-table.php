@@ -74,10 +74,26 @@ $this->title = 'Tasks Export Table';
             color: white;
         }
         
-        .status-badge.pending { background-color: #ffc107; color: #212529; }
-        .status-badge.in_progress { background-color: #17a2b8; }
-        .status-badge.completed { background-color: #28a745; }
-        .status-badge.cancelled { background-color: #dc3545; }
+        /* Status badge colors matching kanban_columns table */
+        .status-badge.pending { background-color: #6c757d; color: white; }
+        .status-badge.ongoing { background-color: #fff700; color: #212529; }
+        .status-badge.done { background-color: #28a745; color: white; }
+        .status-badge.testcase { background-color: #000000; color: white; }
+        .status-badge.staging { background-color: #000000; color: white; }
+        .status-badge.debugging { background-color: #000000; color: white; }
+        .status-badge.production { background-color: #000000; color: white; }
+        .status-badge.verifying { background-color: #000000; color: white; }
+        .status-badge.completed { background-color: #2eff62; color: #212529; }
+        
+        /* Legacy status support (if any tasks still use these) */
+        .status-badge.in_progress { background-color: #fff700; color: #212529; }
+        .status-badge.cancelled { background-color: #dc3545; color: white; }
+        
+        /* Default fallback for any unknown status */
+        .status-badge:not(.pending):not(.ongoing):not(.done):not(.testcase):not(.staging):not(.debugging):not(.production):not(.verifying):not(.completed):not(.in_progress):not(.cancelled) {
+            background-color: #6c757d;
+            color: white;
+        }
         
         .priority-badge {
             display: inline-block;

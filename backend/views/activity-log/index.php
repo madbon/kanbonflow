@@ -7,8 +7,9 @@ use yii\bootstrap4\ActiveForm;
 
 /* @var $this yii\web\View */
 /* @var $dataProvider yii\data\ActiveDataProvider */
-/* @var $actionTypes array */
+/* @var $actionTypeOptions array */
 /* @var $tasks array */
+/* @var $categories array */
 /* @var $statistics array */
 /* @var $filters array */
 
@@ -221,6 +222,30 @@ $this->registerCss('
     gap: 0.5rem !important;
 }
 
+.action-types-container {
+    background: #f8f9fa;
+}
+
+.action-types-container .form-check {
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.action-types-container .form-check:hover {
+    background: #e9ecef;
+    border-radius: 0.25rem;
+}
+
+.action-types-container .form-check-input {
+    margin-right: 0.5rem;
+}
+
+.action-types-container .form-check-label {
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+
 @media (max-width: 768px) {
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -289,13 +314,34 @@ $this->registerCss('
                 </div>
             </div>
             
+            <div class="col-md-6">
+                <div class="form-group">
+                    <?= Html::label('Action Types', 'action_types', ['class' => 'form-label']) ?>
+                    <div class="action-types-container" style="max-height: 120px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.25rem; padding: 0.5rem;">
+                        <?php foreach ($actionTypeOptions as $value => $label): ?>
+                            <div class="form-check">
+                                <?= Html::checkbox('action_types[]', in_array($value, isset($filters['action_types']) ? $filters['action_types'] : []), [
+                                    'value' => $value,
+                                    'id' => 'action_type_' . $value,
+                                    'class' => 'form-check-input action-type-checkbox'
+                                ]) ?>
+                                <?= Html::label($label, 'action_type_' . $value, ['class' => 'form-check-label']) ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <small class="form-text text-muted">Select multiple action types to filter by (leave all unchecked for all types)</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
             <div class="col-md-3">
                 <div class="form-group">
-                    <?= Html::label('Action Type', 'action_type', ['class' => 'form-label']) ?>
-                    <?= Html::dropDownList('action_type', $filters['action_type'], 
-                        array_merge(['' => 'All Types'], $actionTypes), [
+                    <?= Html::label('Category', 'category_id', ['class' => 'form-label']) ?>
+                    <?= Html::dropDownList('category_id', $filters['category_id'], 
+                        array_merge(['' => 'All Categories'], $categories), [
                         'class' => 'form-control',
-                        'id' => 'action_type'
+                        'id' => 'category_id'
                     ]) ?>
                 </div>
             </div>
@@ -331,11 +377,17 @@ $this->registerCss('
         <div class="filter-actions">
             <?= Html::submitButton('Filter', ['class' => 'btn btn-primary']) ?>
             <?= Html::a('Clear Filters', ['index'], ['class' => 'btn btn-outline-secondary']) ?>
-            <?= Html::a('<i class="fa fa-external-link-alt"></i> Export to List', ['export-table'] + array_filter($filters), [
-                'class' => 'btn btn-info',
-                'target' => '_blank',
-                'title' => 'Open activity list in new tab - Simple table format with Activity Details, Date & Time, and Category columns'
-            ]) ?>
+            
+            <!-- Action Types quick actions -->
+            <div class="btn-group btn-group-sm ms-2" role="group">
+                <button type="button" class="btn btn-outline-info" id="selectAllActionTypes">Select All</button>
+                <button type="button" class="btn btn-outline-info" id="selectNoneActionTypes">Clear All</button>
+            </div>
+            
+            <a href="#" class="btn btn-info" id="exportToListBtn" target="_blank" 
+               title="Open activity list in new tab - Simple table format with Activity Details, Date & Time, and Category columns">
+                <i class="fa fa-external-link-alt"></i> Export to List
+            </a>
         </div>
         
         <?php ActiveForm::end(); ?>
@@ -582,6 +634,31 @@ $this->registerJs('
         }
     });
     
+    // Auto-submit when category changes
+    $("#category_id").on("change", function() {
+        $(".filter-form").submit();
+    });
+    
+    // Action type checkbox handlers
+    $("#selectAllActionTypes").on("click", function() {
+        $(".action-type-checkbox").prop("checked", true);
+    });
+    
+    $("#selectNoneActionTypes").on("click", function() {
+        $(".action-type-checkbox").prop("checked", false);
+    });
+    
+    // Auto-submit when action type checkboxes change (with slight delay to allow multiple selections)
+    let actionTypeTimeout;
+    $(".action-type-checkbox").on("change", function() {
+        clearTimeout(actionTypeTimeout);
+        actionTypeTimeout = setTimeout(function() {
+            $(".filter-form").submit();
+        }, 500);
+    });
+    
+
+    
     // Quick date range buttons
     $(".filter-panel").prepend(`
         <div class="mb-3">
@@ -628,6 +705,61 @@ $this->registerJs('
     $("a[href*=\'export-table\']").on("click", function() {
         var $btn = $(this);
         var originalText = $btn.text();
+        $btn.html("<i class=\'fa fa-spinner fa-spin\'></i> Opening...");
+        
+        setTimeout(function() {
+            $btn.html(originalText);
+        }, 3000);
+    });
+');
+
+// Register separate JavaScript for export functionality
+$this->registerJs('
+    // Handle export to list button
+    $("#exportToListBtn").on("click", function(e) {
+        e.preventDefault();
+        
+        // Build export URL with current filter values
+        var exportUrl = "' . Url::to(['export-table']) . '";
+        var params = [];
+        
+        // Add date filters
+        if ($("#date_from").val()) params.push("date_from=" + encodeURIComponent($("#date_from").val()));
+        if ($("#date_to").val()) params.push("date_to=" + encodeURIComponent($("#date_to").val()));
+        
+        // Add selected action types
+        $(".action-type-checkbox:checked").each(function() {
+            params.push("action_types[]=" + encodeURIComponent($(this).val()));
+        });
+        
+        // Add category filter
+        if ($("#category_id").val()) params.push("category_id=" + encodeURIComponent($("#category_id").val()));
+        
+        // Add task filter
+        if ($("#task_id").val()) params.push("task_id=" + encodeURIComponent($("#task_id").val()));
+        
+        // Add view type
+        if ($("#view_type").val()) params.push("view_type=" + encodeURIComponent($("#view_type").val()));
+        
+        // Build final URL
+        if (params.length > 0) {
+            exportUrl += "?" + params.join("&");
+        }
+        
+        // Show confirmation for large exports
+        var activityCount = ' . $dataProvider->getTotalCount() . ';
+        if (activityCount > 100) {
+            if (!confirm("You are about to export " + activityCount + " activities. This may take a moment to load. Continue?")) {
+                return false;
+            }
+        }
+        
+        // Open in new tab
+        window.open(exportUrl, "_blank");
+        
+        // Show loading state
+        var $btn = $(this);
+        var originalText = $btn.html();
         $btn.html("<i class=\'fa fa-spinner fa-spin\'></i> Opening...");
         
         setTimeout(function() {

@@ -10,6 +10,7 @@ use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
 use common\modules\taskmonitor\models\TaskHistory;
 use common\modules\taskmonitor\models\Task;
+use common\modules\taskmonitor\models\TaskCategory;
 use yii\helpers\ArrayHelper;
 
 /**
@@ -52,10 +53,17 @@ class ActivityLogController extends Controller
         // Get filter parameters
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
-        $actionType = $request->get('action_type');
+        $actionTypes = $request->get('action_types', []); // Changed to support multiple types
+        $categoryId = $request->get('category_id'); // Added category filter
         $taskId = $request->get('task_id');
         $userId = $request->get('user_id');
         $viewType = $request->get('view_type', 'timeline'); // default to timeline view
+        
+        // Handle legacy single action_type parameter for backwards compatibility
+        $legacyActionType = $request->get('action_type');
+        if ($legacyActionType && empty($actionTypes)) {
+            $actionTypes = [$legacyActionType];
+        }
         
         // Build query
         $query = TaskHistory::find()
@@ -84,8 +92,12 @@ class ActivityLogController extends Controller
         }
         
         // Apply other filters
-        if ($actionType) {
-            $query->andWhere(['action_type' => $actionType]);
+        if (!empty($actionTypes)) {
+            $query->andWhere(['action_type' => $actionTypes]);
+        }
+        if ($categoryId) {
+            $query->joinWith('task')
+                  ->andWhere(['tasks.category_id' => $categoryId]);
         }
         if ($taskId) {
             $query->andWhere(['task_id' => $taskId]);
@@ -108,26 +120,36 @@ class ActivityLogController extends Controller
         ]);
         
         // Get filter options
-        $actionTypes = TaskHistory::getActionTypes();
+        $actionTypeOptions = TaskHistory::getActionTypes();
         $tasks = ArrayHelper::map(
             Task::find()->select(['id', 'title'])->all(),
             'id',
             'title'
         );
+        $categories = ArrayHelper::map(
+            TaskCategory::find()
+                ->where(['is_active' => 1])
+                ->orderBy(['name' => SORT_ASC])
+                ->all(),
+            'id',
+            'name'
+        );
         
         // Get statistics
-        $statistics = $this->getStatistics($dateFrom, $dateTo);
+        $statistics = $this->getStatistics($dateFrom, $dateTo, $actionTypes, $categoryId);
         
         return $this->render('index', [
             'dataProvider' => $dataProvider,
-            'actionTypes' => $actionTypes,
+            'actionTypeOptions' => $actionTypeOptions,
             'tasks' => $tasks,
+            'categories' => $categories,
             'statistics' => $statistics,
             'viewType' => $viewType,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
-                'action_type' => $actionType,
+                'action_types' => $actionTypes,
+                'category_id' => $categoryId,
                 'task_id' => $taskId,
                 'user_id' => $userId,
                 'view_type' => $viewType,
@@ -146,9 +168,16 @@ class ActivityLogController extends Controller
         // Get filter parameters
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
-        $actionType = $request->get('action_type');
+        $actionTypes = $request->get('action_types', []);
+        $categoryId = $request->get('category_id');
         $taskId = $request->get('task_id');
         $userId = $request->get('user_id');
+        
+        // Handle legacy single action_type parameter for backwards compatibility
+        $legacyActionType = $request->get('action_type');
+        if ($legacyActionType && empty($actionTypes)) {
+            $actionTypes = [$legacyActionType];
+        }
         
         // Build query
         $query = TaskHistory::find()
@@ -171,8 +200,12 @@ class ActivityLogController extends Controller
             $toTimestamp = strtotime($dateTo . ' 23:59:59');
             $query->andWhere(['<=', 'created_at', $toTimestamp]);
         }
-        if ($actionType) {
-            $query->andWhere(['action_type' => $actionType]);
+        if (!empty($actionTypes)) {
+            $query->andWhere(['action_type' => $actionTypes]);
+        }
+        if ($categoryId) {
+            $query->joinWith('task')
+                  ->andWhere(['tasks.category_id' => $categoryId]);
         }
         if ($taskId) {
             $query->andWhere(['task_id' => $taskId]);
@@ -220,9 +253,11 @@ class ActivityLogController extends Controller
      * Get activity statistics for the given date range
      * @param string $dateFrom
      * @param string $dateTo
+     * @param array $actionTypes
+     * @param int $categoryId
      * @return array
      */
-    private function getStatistics($dateFrom = null, $dateTo = null)
+    private function getStatistics($dateFrom = null, $dateTo = null, $actionTypes = [], $categoryId = null)
     {
         $query = TaskHistory::find();
         
@@ -234,6 +269,15 @@ class ActivityLogController extends Controller
         if ($dateTo) {
             $toTimestamp = strtotime($dateTo . ' 23:59:59');
             $query->andWhere(['<=', 'created_at', $toTimestamp]);
+        }
+        
+        // Apply action type and category filters to statistics as well
+        if (!empty($actionTypes)) {
+            $query->andWhere(['action_type' => $actionTypes]);
+        }
+        if ($categoryId) {
+            $query->joinWith('task')
+                  ->andWhere(['tasks.category_id' => $categoryId]);
         }
         
         $totalActivities = $query->count();
@@ -399,9 +443,16 @@ class ActivityLogController extends Controller
         // Get filter parameters
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
-        $actionType = $request->get('action_type');
+        $actionTypes = $request->get('action_types', []);
+        $categoryId = $request->get('category_id');
         $taskId = $request->get('task_id');
         $userId = $request->get('user_id');
+        
+        // Handle legacy single action_type parameter for backwards compatibility
+        $legacyActionType = $request->get('action_type');
+        if ($legacyActionType && empty($actionTypes)) {
+            $actionTypes = [$legacyActionType];
+        }
         
         // Build query
         $query = TaskHistory::find()
@@ -426,8 +477,12 @@ class ActivityLogController extends Controller
         }
         
         // Apply other filters
-        if ($actionType) {
-            $query->andWhere(['action_type' => $actionType]);
+        if (!empty($actionTypes)) {
+            $query->andWhere(['action_type' => $actionTypes]);
+        }
+        if ($categoryId) {
+            $query->joinWith('task')
+                  ->andWhere(['tasks.category_id' => $categoryId]);
         }
         if ($taskId) {
             $query->andWhere(['task_id' => $taskId]);
@@ -447,7 +502,8 @@ class ActivityLogController extends Controller
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
-                'action_type' => $actionType,
+                'action_types' => $actionTypes,
+                'category_id' => $categoryId,
                 'task_id' => $taskId,
                 'user_id' => $userId,
             ],

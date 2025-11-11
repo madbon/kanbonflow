@@ -10,6 +10,7 @@ use yii\filters\AccessControl;
 use common\modules\taskmonitor\models\Task;
 use common\modules\taskmonitor\models\TaskCategory;
 use common\modules\taskmonitor\models\TaskHistory;
+use common\modules\taskmonitor\models\TaskChecklist;
 use common\modules\kanban\models\KanbanBoard;
 use common\modules\kanban\models\KanbanColumn;
 use Exception;
@@ -43,7 +44,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks', 'get-task-checklist', 'add-checklist-item', 'update-checklist-item', 'delete-checklist-item', 'toggle-checklist-item', 'reorder-checklist-items'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -64,6 +65,12 @@ class BoardController extends Controller
                     'get-deadline-tasks' => ['GET'],
                     'get-completion-tasks' => ['GET', 'POST'],
                     'get-category-completion-tasks' => ['GET', 'POST'],
+                    'get-task-checklist' => ['GET'],
+                    'add-checklist-item' => ['POST'],
+                    'update-checklist-item' => ['POST'],
+                    'delete-checklist-item' => ['POST'],
+                    'toggle-checklist-item' => ['POST'],
+                    'reorder-checklist-items' => ['POST'],
                 ],
             ],
         ];
@@ -630,6 +637,7 @@ class BoardController extends Controller
                     'description' => $task->category->description,
                 ] : null,
                 'images' => $images,
+                'checklist' => $this->getTaskChecklistForDetails($task->id),
             ]
         ];
     }
@@ -1066,5 +1074,275 @@ class BoardController extends Controller
                 'message' => 'Error loading category tasks: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get checklist items for a specific task
+     */
+    public function actionGetTaskChecklist()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $taskId = Yii::$app->request->get('taskId');
+        
+        if (!$taskId) {
+            return ['success' => false, 'message' => 'Task ID is required'];
+        }
+
+        $task = Task::findOne($taskId);
+        if (!$task) {
+            return ['success' => false, 'message' => 'Task not found'];
+        }
+
+        $checklistItems = TaskChecklist::getTaskChecklistItems($taskId);
+        $progress = TaskChecklist::getTaskChecklistProgress($taskId);
+
+        $formattedItems = [];
+        foreach ($checklistItems as $item) {
+            $formattedItems[] = [
+                'id' => $item->id,
+                'step_text' => $item->step_text,
+                'is_completed' => (bool)$item->is_completed,
+                'sort_order' => $item->sort_order,
+                'completed_at' => $item->completed_at ? date('M j, Y H:i', $item->completed_at) : null,
+                'completed_by_name' => $item->getCompletedByName(),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'items' => $formattedItems,
+            'progress' => $progress
+        ];
+    }
+
+    /**
+     * Add a new checklist item to a task
+     */
+    public function actionAddChecklistItem()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $taskId = Yii::$app->request->post('taskId');
+        $stepText = trim(Yii::$app->request->post('stepText'));
+        
+        if (!$taskId || !$stepText) {
+            return ['success' => false, 'message' => 'Task ID and step text are required'];
+        }
+
+        $task = Task::findOne($taskId);
+        if (!$task) {
+            return ['success' => false, 'message' => 'Task not found'];
+        }
+
+        // Get the next sort order
+        $maxSortOrder = TaskChecklist::find()
+            ->where(['task_id' => $taskId])
+            ->max('sort_order');
+        
+        $checklist = new TaskChecklist();
+        $checklist->task_id = $taskId;
+        $checklist->step_text = $stepText;
+        $checklist->sort_order = $maxSortOrder !== null ? $maxSortOrder + 1 : 0;
+
+        if ($checklist->save()) {
+            // Log to task history
+            TaskHistory::log(
+                $taskId,
+                TaskHistory::ACTION_CHECKLIST_UPDATED,
+                'Checklist item added: "' . substr($stepText, 0, 50) . (strlen($stepText) > 50 ? '...' : '') . '"',
+                'checklist_item',
+                '',
+                'added'
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Checklist item added successfully',
+                'item' => [
+                    'id' => $checklist->id,
+                    'step_text' => $checklist->step_text,
+                    'is_completed' => false,
+                    'sort_order' => $checklist->sort_order,
+                    'completed_at' => null,
+                    'completed_by_name' => null,
+                ]
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to add checklist item', 'errors' => $checklist->errors];
+        }
+    }
+
+    /**
+     * Update text of an existing checklist item
+     */
+    public function actionUpdateChecklistItem()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $itemId = Yii::$app->request->post('itemId');
+        $stepText = trim(Yii::$app->request->post('stepText'));
+        
+        if (!$itemId || !$stepText) {
+            return ['success' => false, 'message' => 'Item ID and step text are required'];
+        }
+
+        $item = TaskChecklist::findOne($itemId);
+        if (!$item) {
+            return ['success' => false, 'message' => 'Checklist item not found'];
+        }
+
+        $oldText = $item->step_text;
+        $item->step_text = $stepText;
+
+        if ($item->save()) {
+            // Log to task history
+            TaskHistory::log(
+                $item->task_id,
+                TaskHistory::ACTION_CHECKLIST_UPDATED,
+                'Checklist item updated: "' . substr($stepText, 0, 50) . (strlen($stepText) > 50 ? '...' : '') . '"',
+                'checklist_item',
+                substr($oldText, 0, 50),
+                substr($stepText, 0, 50)
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Checklist item updated successfully'
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to update checklist item', 'errors' => $item->errors];
+        }
+    }
+
+    /**
+     * Delete a checklist item
+     */
+    public function actionDeleteChecklistItem()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $itemId = Yii::$app->request->post('itemId');
+        
+        if (!$itemId) {
+            return ['success' => false, 'message' => 'Item ID is required'];
+        }
+
+        $item = TaskChecklist::findOne($itemId);
+        if (!$item) {
+            return ['success' => false, 'message' => 'Checklist item not found'];
+        }
+
+        $taskId = $item->task_id;
+        $stepText = $item->step_text;
+
+        if ($item->delete()) {
+            // Log to task history
+            TaskHistory::log(
+                $taskId,
+                TaskHistory::ACTION_CHECKLIST_UPDATED,
+                'Checklist item deleted: "' . substr($stepText, 0, 50) . (strlen($stepText) > 50 ? '...' : '') . '"',
+                'checklist_item',
+                'exists',
+                'deleted'
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Checklist item deleted successfully'
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to delete checklist item'];
+        }
+    }
+
+    /**
+     * Toggle completion status of a checklist item
+     */
+    public function actionToggleChecklistItem()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $itemId = Yii::$app->request->post('itemId');
+        
+        if (!$itemId) {
+            return ['success' => false, 'message' => 'Item ID is required'];
+        }
+
+        $item = TaskChecklist::findOne($itemId);
+        if (!$item) {
+            return ['success' => false, 'message' => 'Checklist item not found'];
+        }
+
+        $userId = Yii::$app->has('user') && !Yii::$app->user->isGuest ? Yii::$app->user->id : null;
+        
+        if ($item->toggleCompletion($userId)) {
+            $progress = TaskChecklist::getTaskChecklistProgress($item->task_id);
+            
+            return [
+                'success' => true,
+                'message' => 'Checklist item ' . ($item->is_completed ? 'completed' : 'marked incomplete'),
+                'is_completed' => (bool)$item->is_completed,
+                'completed_at' => $item->completed_at ? date('M j, Y H:i', $item->completed_at) : null,
+                'completed_by_name' => $item->getCompletedByName(),
+                'progress' => $progress
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to toggle checklist item'];
+        }
+    }
+
+    /**
+     * Reorder checklist items for a task
+     */
+    public function actionReorderChecklistItems()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        $taskId = Yii::$app->request->post('taskId');
+        $itemIds = Yii::$app->request->post('itemIds', []);
+        
+        if (!$taskId || !is_array($itemIds)) {
+            return ['success' => false, 'message' => 'Task ID and item IDs array are required'];
+        }
+
+        $task = Task::findOne($taskId);
+        if (!$task) {
+            return ['success' => false, 'message' => 'Task not found'];
+        }
+
+        if (TaskChecklist::reorderItems($taskId, $itemIds)) {
+            return [
+                'success' => true,
+                'message' => 'Checklist items reordered successfully'
+            ];
+        } else {
+            return ['success' => false, 'message' => 'Failed to reorder checklist items'];
+        }
+    }
+
+    /**
+     * Get formatted checklist data for task details
+     */
+    private function getTaskChecklistForDetails($taskId)
+    {
+        $items = TaskChecklist::getTaskChecklistItems($taskId);
+        $progress = TaskChecklist::getTaskChecklistProgress($taskId);
+
+        $formattedItems = [];
+        foreach ($items as $item) {
+            $formattedItems[] = [
+                'id' => $item->id,
+                'step_text' => $item->step_text,
+                'is_completed' => (bool)$item->is_completed,
+                'completed_at' => $item->getFormattedCompletionTime(),
+                'completed_by_name' => $item->is_completed ? $item->getCompletedByName() : null,
+            ];
+        }
+
+        return [
+            'items' => $formattedItems,
+            'progress' => $progress
+        ];
     }
 }

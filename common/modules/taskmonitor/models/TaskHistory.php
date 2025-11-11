@@ -41,6 +41,7 @@ class TaskHistory extends ActiveRecord
     const ACTION_RESTORED = 'restored';
     const ACTION_ASSIGNED = 'assigned';
     const ACTION_UNASSIGNED = 'unassigned';
+    const ACTION_CHECKLIST_UPDATED = 'checklist_updated';
 
     /**
      * {@inheritdoc}
@@ -88,6 +89,7 @@ class TaskHistory extends ActiveRecord
                 self::ACTION_RESTORED,
                 self::ACTION_ASSIGNED,
                 self::ACTION_UNASSIGNED,
+                self::ACTION_CHECKLIST_UPDATED,
             ]],
         ];
     }
@@ -152,6 +154,7 @@ class TaskHistory extends ActiveRecord
             self::ACTION_RESTORED => 'Restored',
             self::ACTION_ASSIGNED => 'Assigned',
             self::ACTION_UNASSIGNED => 'Unassigned',
+            self::ACTION_CHECKLIST_UPDATED => 'Checklist Updated',
         ];
 
         return isset($labels[$this->action_type]) ? $labels[$this->action_type] : $this->action_type;
@@ -245,6 +248,7 @@ class TaskHistory extends ActiveRecord
             self::ACTION_RESTORED => 'fa fa-undo',
             self::ACTION_ASSIGNED => 'fa fa-user-plus',
             self::ACTION_UNASSIGNED => 'fa fa-user-minus',
+            self::ACTION_CHECKLIST_UPDATED => 'fa fa-list-ul',
         ];
 
         return isset($icons[$this->action_type]) ? $icons[$this->action_type] : 'fa fa-info-circle';

@@ -154,6 +154,16 @@ class Task extends \yii\db\ActiveRecord
     }
 
     /**
+     * Gets query for [[ChecklistItems]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getChecklistItems()
+    {
+        return $this->hasMany(TaskChecklist::className(), ['task_id' => 'id'])->orderBy(['sort_order' => SORT_ASC, 'id' => SORT_ASC]);
+    }
+
+    /**
      * Get comments count for this task
      * @return int
      */
@@ -313,6 +323,16 @@ class Task extends \yii\db\ActiveRecord
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get checklist progress for this task
+     * 
+     * @return array ['total' => int, 'completed' => int, 'percentage' => float]
+     */
+    public function getChecklistProgress()
+    {
+        return TaskChecklist::getTaskChecklistProgress($this->id);
     }
 
     /**

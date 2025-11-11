@@ -896,6 +896,222 @@ $this->registerCss('
             transform: scale(1.01);
         }
     }
+    
+    /* Checklist Styles */
+    .checklist-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        margin-bottom: 5px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        cursor: move;
+    }
+    
+    .checklist-item:hover {
+        background: #e9ecef;
+        border-color: #dee2e6;
+    }
+    
+    .checklist-item.completed {
+        background: #d4edda;
+        border-color: #c3e6cb;
+    }
+    
+    .checklist-item.completed .checklist-text {
+        text-decoration: line-through;
+        color: #6c757d;
+    }
+    
+    .checklist-checkbox {
+        margin-right: 10px;
+        cursor: pointer;
+    }
+    
+    .checklist-text {
+        flex: 1;
+        padding: 4px 8px;
+        border: none;
+        background: transparent;
+        resize: none;
+        outline: none;
+        font-size: 14px;
+        line-height: 1.4;
+        min-height: 20px;
+    }
+    
+    .checklist-text:focus {
+        background: white;
+        border: 1px solid #007bff;
+        border-radius: 3px;
+    }
+    
+    .checklist-actions {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .checklist-drag-handle {
+        cursor: move;
+        color: #6c757d;
+        padding: 0 5px;
+        margin-right: 5px;
+    }
+    
+    .checklist-drag-handle:hover {
+        color: #495057;
+    }
+    
+    .checklist-item.ui-sortable-helper {
+        transform: rotate(2deg);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        z-index: 1000;
+    }
+    
+    .checklist-item.ui-sortable-placeholder {
+        background: #fff3cd;
+        border: 2px dashed #ffc107;
+        height: 40px;
+        margin-bottom: 5px;
+    }
+    
+    .add-checklist-item {
+        padding: 8px 12px;
+        border: 2px dashed #dee2e6;
+        border-radius: 4px;
+        text-align: center;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .add-checklist-item:hover {
+        border-color: #007bff;
+        color: #007bff;
+        background: rgba(0, 123, 255, 0.05);
+    }
+    
+    .checklist-empty {
+        text-align: center;
+        padding: 20px;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    .checklist-progress .progress {
+        height: 8px;
+    }
+    
+    .checklist-progress-text {
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    /* Readonly Checklist Styles for Task Details Modal */
+    .checklist-item-readonly {
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    
+    .checklist-item-readonly:last-child {
+        border-bottom: none;
+    }
+    
+    .checklist-item-readonly.completed {
+        opacity: 0.7;
+    }
+    
+    .checklist-progress-summary .progress {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .task-checklist h6 {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    
+    /* Interactive Checklist Styles for Task Details Modal */
+    .checklist-item-interactive {
+        padding: 12px 16px;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        background: #fff;
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+        cursor: pointer;
+    }
+    
+    .checklist-item-interactive:hover {
+        background: #f8f9fa;
+        border-color: #dee2e6;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .checklist-item-interactive.completed {
+        background: #f8fff9;
+        border-color: #d4edda;
+    }
+    
+    .checklist-item-interactive.completed:hover {
+        background: #e8f5e8;
+    }
+    
+    .checklist-checkbox-details {
+        transform: scale(1.2);
+        margin-right: 12px;
+        cursor: pointer;
+    }
+    
+    .checklist-text-display {
+        font-size: 14px;
+        line-height: 1.5;
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .checklist-item-content {
+        display: flex;
+        align-items: flex-start;
+        flex-direction: row;
+        width: 100%;
+    }
+    
+    .checklist-item-content > input[type="checkbox"] {
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    
+    .checklist-item-content > span {
+        flex: 1;
+        margin-left: 8px;
+    }
+    
+    .task-checklist .btn-outline-primary {
+        border-color: #007bff;
+        color: #007bff;
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+    
+    .task-checklist .btn-outline-primary:hover {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: #fff;
+    }
+    
+    /* Progress bar animations */
+    .checklist-progress-summary .progress-bar {
+        transition: width 0.4s ease;
+    }
+    
+    /* Completed item animations */
+    .checklist-item-interactive.completed .checklist-text-display {
+        transition: all 0.3s ease;
+    }
 ');
 
 $statistics = KanbanBoard::getStatistics();
@@ -1260,6 +1476,27 @@ uasort($allStatistics, function($a, $b) {
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Checklist Section -->
+                    <div class="form-group">
+                        <label>
+                            <i class="fa fa-list-ul"></i> Task Checklist
+                        </label>
+                        <button type="button" class="btn btn-sm btn-success ml-2" id="addChecklistItemBtn">
+                            <i class="fa fa-plus"></i> Add Step
+                        </button>
+                        <div id="checklistContainer">
+                            <!-- Checklist items will be loaded here -->
+                        </div>
+                        <div class="checklist-progress mt-2" id="checklistProgress" style="display: none;">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: 0%" id="checklistProgressBar">
+                                    <span id="checklistProgressText">0%</span>
+                                </div>
+                            </div>
+                            <small class="text-muted" id="checklistProgressDetails">0 of 0 steps completed</small>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -1522,6 +1759,12 @@ $this->registerJs("
             getDeadlineTasks: '" . Url::to(['get-deadline-tasks']) . "',
             getCompletionTasks: '" . Url::to(['get-completion-tasks']) . "',
             getCategoryCompletionTasks: '" . Url::to(['get-category-completion-tasks']) . "',
+            getTaskChecklistUrl: '" . Url::to(['get-task-checklist']) . "',
+            addChecklistItemUrl: '" . Url::to(['add-checklist-item']) . "',
+            updateChecklistItemUrl: '" . Url::to(['update-checklist-item']) . "',
+            deleteChecklistItemUrl: '" . Url::to(['delete-checklist-item']) . "',
+            toggleChecklistItemUrl: '" . Url::to(['toggle-checklist-item']) . "',
+            reorderChecklistItemsUrl: '" . Url::to(['reorder-checklist-items']) . "',
             csrfToken: '" . Yii::$app->request->csrfToken . "',
             csrfParam: '" . Yii::$app->request->csrfParam . "'
         });

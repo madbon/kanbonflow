@@ -245,6 +245,24 @@ $this->registerCss('
         word-wrap: break-word;
         overflow-wrap: break-word;
     }
+    
+    /* URL styling in kanban task details modal */
+    .kanban-modal-url {
+        color: #007bff;
+        text-decoration: none;
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+    
+    .kanban-modal-url:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
+    
+    .description-content {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
 
     .task-description h6 {
         font-size: 14px;

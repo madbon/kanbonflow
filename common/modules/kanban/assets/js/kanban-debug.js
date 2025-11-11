@@ -537,7 +537,7 @@ var KanbanBoard = {
                         
                         '<div class="task-description">' +
                             '<h6>Description:</h6>' +
-                            '<div class="description-content">' + (task.description || '<em class="text-muted">No description provided</em>') + '</div>' +
+                            '<div class="description-content">' + self.formatDescription(task.description) + '</div>' +
                         '</div>' +
                     '</div>' +
                     
@@ -623,6 +623,20 @@ var KanbanBoard = {
             '</div>'
         );
         $('#editTaskFromDetails, #deleteTaskFromDetails').hide();
+    },
+
+    formatDescription: function(description) {
+        if (!description) {
+            return '<em class="text-muted">No description provided</em>';
+        }
+        
+        // Convert URLs to clickable links
+        var formattedDescription = description.replace(
+            /(https?:\/\/[^\s]+)/g, 
+            '<a href="$1" target="_blank" rel="noopener" class="kanban-modal-url">$1</a>'
+        );
+        
+        return formattedDescription;
     },
 
     editTask: function(taskId) {

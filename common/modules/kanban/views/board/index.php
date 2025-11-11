@@ -38,15 +38,15 @@ $this->registerCss('
     .focus-indicator {
         display: none;
         position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 12px;
-        height: 12px;
+        top: 6px;
+        right: 6px;
+        width: 18px;
+        height: 18px;
         background: #ff5100ff;
         border-radius: 50%;
         animation: focusBlink 1.5s infinite;
         z-index: 5;
-        box-shadow: 0 0 8px rgba(255, 94, 0, 0.6);
+        box-shadow: 0 0 12px rgba(255, 94, 0, 0.6);
     }
     
     .focus-indicator::before {
@@ -55,8 +55,8 @@ $this->registerCss('
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         background: white;
         border-radius: 50%;
     }
@@ -65,12 +65,12 @@ $this->registerCss('
         0% { 
             opacity: 1;
             transform: scale(1);
-            box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+            box-shadow: 0 0 12px rgba(0, 123, 255, 0.6);
         }
         50% { 
             opacity: 0.3;
             transform: scale(1.2);
-            box-shadow: 0 0 15px rgba(0, 123, 255, 0.9);
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.9);
         }
         100% { 
             opacity: 1;

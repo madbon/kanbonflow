@@ -373,12 +373,21 @@ var KanbanBoard = {
 
     showAddColumnModal: function() {
         $('#addColumnForm')[0].reset();
+        // Set default values
+        $('#columnDeletable').prop('checked', true);
         $('#addColumnModal').modal('show');
     },
 
     saveColumn: function() {
         var self = this;
         var formData = $('#addColumnForm').serialize();
+        
+        // Handle checkbox - if unchecked, add is_deletable=0
+        if (!$('#columnDeletable').is(':checked')) {
+            formData += '&is_deletable=0';
+        }
+        
+        console.log('Add Column Form Data:', formData);
         
         $.ajax({
             url: this.config.addColumnUrl,
@@ -400,20 +409,39 @@ var KanbanBoard = {
     },
 
     showEditColumnModal: function(columnId) {
+        var self = this;
         var columnElement = $('.kanban-column[data-column-id="' + columnId + '"]');
-        var columnName = columnElement.find('.column-title').text();
-        var columnColor = columnElement.find('.kanban-column-header').css('border-bottom-color');
-        var columnIcon = columnElement.find('.kanban-column-header i').attr('class');
+        var columnName = columnElement.data('column-name');
+        var columnColor = columnElement.data('column-color');
+        var columnIcon = columnElement.data('column-icon');
+        var isDeletable = columnElement.data('is-deletable');
+        
+        console.log('Edit Column Modal Data:', {
+            columnId: columnId,
+            columnName: columnName,
+            columnColor: columnColor,
+            columnIcon: columnIcon,
+            isDeletable: isDeletable
+        });
         
         $('#editColumnId').val(columnId);
         $('#editColumnName').val(columnName);
+        $('#editColumnColor').val(columnColor);
         $('#editColumnIcon').val(columnIcon);
+        $('#editColumnDeletable').prop('checked', isDeletable == 1);
         $('#editColumnModal').modal('show');
     },
 
     updateColumn: function() {
         var self = this;
         var formData = $('#editColumnForm').serialize();
+        
+        // Handle checkbox - if unchecked, add is_deletable=0
+        if (!$('#editColumnDeletable').is(':checked')) {
+            formData += '&is_deletable=0';
+        }
+        
+        console.log('Edit Column Form Data:', formData);
         
         $.ajax({
             url: this.config.editColumnUrl,

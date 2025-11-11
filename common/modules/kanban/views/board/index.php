@@ -948,7 +948,11 @@ uasort($allStatistics, function($a, $b) {
         <?php foreach ($columns as $column): ?>
             <div class="kanban-column kanban-column-<?= str_replace('_', '-', $column->status_key) ?>" 
                  data-status="<?= $column->status_key ?>" 
-                 data-column-id="<?= $column->id ?>">
+                 data-column-id="<?= $column->id ?>"
+                 data-column-name="<?= Html::encode($column->name) ?>"
+                 data-column-color="<?= $column->color ?>"
+                 data-column-icon="<?= $column->icon ?>"
+                 data-is-deletable="<?= $column->is_deletable ?>">
                 <div class="kanban-column-header" draggable="true" style="border-bottom-color: <?= $column->color ?>">
                     <i class="<?= $column->icon ?>"></i>
                     <span class="column-title"><?= Html::encode($column->name) ?></span>
@@ -959,9 +963,11 @@ uasort($allStatistics, function($a, $b) {
                         <button class="btn-column-edit" data-column-id="<?= $column->id ?>" title="Edit Column">
                             <i class="fa fa-edit"></i>
                         </button>
-                        <button class="btn-column-delete" data-column-id="<?= $column->id ?>" title="Delete Column">
-                            <i class="fa fa-trash"></i>
-                        </button>
+                        <?php if ($column->is_deletable): ?>
+                            <button class="btn-column-delete" data-column-id="<?= $column->id ?>" title="Delete Column">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 
@@ -1293,6 +1299,16 @@ uasort($allStatistics, function($a, $b) {
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="columnDeletable" name="is_deletable" value="1" checked>
+                            <label class="form-check-label" for="columnDeletable">
+                                Allow column to be deleted
+                            </label>
+                            <small class="form-text text-muted">If unchecked, this column cannot be deleted by users</small>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -1332,6 +1348,16 @@ uasort($allStatistics, function($a, $b) {
                                 <label for="editColumnIcon">Icon Class</label>
                                 <input type="text" class="form-control" id="editColumnIcon" name="icon" placeholder="fa fa-list">
                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editColumnDeletable" name="is_deletable" value="1">
+                            <label class="form-check-label" for="editColumnDeletable">
+                                Allow column to be deleted
+                            </label>
+                            <small class="form-text text-muted">If unchecked, this column cannot be deleted by users</small>
                         </div>
                     </div>
                 </form>

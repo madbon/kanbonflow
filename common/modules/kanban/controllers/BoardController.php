@@ -259,6 +259,9 @@ class BoardController extends Controller
         $name = Yii::$app->request->post('name');
         $color = Yii::$app->request->post('color');
         $icon = Yii::$app->request->post('icon');
+        $isDeletable = Yii::$app->request->post('is_deletable', 1); // Default to 1 (deletable)
+        
+
         
         if (empty($name)) {
             return ['success' => false, 'message' => 'Column name is required'];
@@ -269,6 +272,8 @@ class BoardController extends Controller
         $column->status_key = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '_', $name));
         $column->color = $color ?: '#6c757d';
         $column->icon = $icon ?: 'fa fa-list';
+        $column->is_deletable = (int) $isDeletable;
+
         
         if ($column->save()) {
             return [
@@ -280,6 +285,7 @@ class BoardController extends Controller
                     'status_key' => $column->status_key,
                     'color' => $column->color,
                     'icon' => $column->icon,
+                    'is_deletable' => $column->is_deletable,
                 ]
             ];
         } else {
@@ -299,6 +305,9 @@ class BoardController extends Controller
         $name = Yii::$app->request->post('name');
         $color = Yii::$app->request->post('color');
         $icon = Yii::$app->request->post('icon');
+        $isDeletable = Yii::$app->request->post('is_deletable');
+        
+
         
         $column = KanbanColumn::findOne($id);
         if (!$column) {
@@ -314,6 +323,8 @@ class BoardController extends Controller
         if (!empty($icon)) {
             $column->icon = $icon;
         }
+        // Always set is_deletable since we handle it in JavaScript
+        $column->is_deletable = (int) $isDeletable;
         
         if ($column->save()) {
             return [
@@ -325,6 +336,7 @@ class BoardController extends Controller
                     'status_key' => $column->status_key,
                     'color' => $column->color,
                     'icon' => $column->icon,
+                    'is_deletable' => $column->is_deletable,
                 ]
             ];
         } else {
@@ -345,6 +357,11 @@ class BoardController extends Controller
         $column = KanbanColumn::findOne($id);
         if (!$column) {
             return ['success' => false, 'message' => 'Column not found'];
+        }
+
+        // Check if column is deletable
+        if (!$column->is_deletable) {
+            return ['success' => false, 'message' => 'This column cannot be deleted as it is marked as non-deletable.'];
         }
 
         // Check if column has tasks

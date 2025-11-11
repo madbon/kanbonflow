@@ -16,6 +16,7 @@ use common\modules\taskmonitor\models\Task;
  * @property string|null $icon
  * @property int|null $position
  * @property int|null $is_active
+ * @property int|null $is_deletable
  * @property int $created_at
  * @property int $updated_at
  *
@@ -48,15 +49,16 @@ class KanbanColumn extends \yii\db\ActiveRecord
     {
         return [
             [['name', 'status_key'], 'required'],
-            [['position', 'is_active', 'created_at', 'updated_at'], 'integer'],
+            [['position', 'is_active', 'is_deletable', 'created_at', 'updated_at'], 'integer'],
             [['name'], 'string', 'max' => 100],
             [['status_key'], 'string', 'max' => 50],
             [['color'], 'string', 'max' => 7],
             [['icon'], 'string', 'max' => 50],
             [['status_key'], 'unique'],
             [['color'], 'match', 'pattern' => '/^#[0-9A-Fa-f]{6}$/', 'message' => 'Color must be a valid hex color (e.g., #ff0000)'],
-            [['is_active'], 'boolean'],
+            [['is_active', 'is_deletable'], 'boolean'],
             [['is_active'], 'default', 'value' => 1],
+            [['is_deletable'], 'default', 'value' => 1],
             [['position'], 'default', 'value' => 0],
             [['color'], 'default', 'value' => '#6c757d'],
             [['icon'], 'default', 'value' => 'fa fa-list'],
@@ -76,6 +78,7 @@ class KanbanColumn extends \yii\db\ActiveRecord
             'icon' => 'Icon',
             'position' => 'Position',
             'is_active' => 'Is Active',
+            'is_deletable' => 'Allow Delete',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
         ];

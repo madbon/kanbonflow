@@ -24,6 +24,8 @@ use common\modules\taskmonitor\behaviors\TaskHistoryBehavior;
  * @property int $updated_at
  * @property int $position
  * @property boolean $include_in_export
+ * @property int $target_start_date
+ * @property int $target_end_date
  *
  * @property TaskCategory $category
  * @property TaskImage[] $images
@@ -77,7 +79,7 @@ class Task extends \yii\db\ActiveRecord
     {
         return [
             [['category_id', 'title', 'deadline'], 'required'],
-            [['category_id', 'deadline', 'completed_at', 'assigned_to', 'created_by', 'created_at', 'updated_at', 'position'], 'integer'],
+            [['category_id', 'deadline', 'completed_at', 'assigned_to', 'created_by', 'created_at', 'updated_at', 'position', 'target_start_date', 'target_end_date'], 'integer'],
             [['include_in_export'], 'boolean'],
             [['include_in_export'], 'default', 'value' => 1],
             [['description'], 'string'],
@@ -110,6 +112,8 @@ class Task extends \yii\db\ActiveRecord
             'updated_at' => 'Updated At',
             'position' => 'Position',
             'include_in_export' => 'Include in Activity Log Export',
+            'target_start_date' => 'Target Start Date',
+            'target_end_date' => 'Target End Date',
         ];
     }
 
@@ -349,5 +353,73 @@ class Task extends \yii\db\ActiveRecord
         
         // Use parent implementation for other attributes
         return parent::isEmpty($attribute);
+    }
+
+    /**
+     * Get formatted target start date
+     */
+    public function getFormattedTargetStartDate()
+    {
+        return $this->target_start_date ? date('Y-m-d', $this->target_start_date) : null;
+    }
+
+    /**
+     * Get formatted target end date
+     */
+    public function getFormattedTargetEndDate()
+    {
+        return $this->target_end_date ? date('Y-m-d', $this->target_end_date) : null;
+    }
+
+    /**
+     * Check if a given date (timestamp) is within the target date range
+     * 
+     * @param int $timestamp
+     * @return boolean
+     */
+    public function isDateInTargetRange($timestamp = null)
+    {
+        if ($timestamp === null) {
+            $timestamp = time();
+        }
+        
+        // If no target dates are set, return false
+        if (!$this->target_start_date || !$this->target_end_date) {
+            return false;
+        }
+        
+        // Convert timestamp to date (start of day) for comparison
+        $checkDate = strtotime(date('Y-m-d', $timestamp));
+        $startDate = strtotime(date('Y-m-d', $this->target_start_date));
+        $endDate = strtotime(date('Y-m-d', $this->target_end_date));
+        
+        return $checkDate >= $startDate && $checkDate <= $endDate;
+    }
+
+    /**
+     * Check if today is within the target date range
+     * 
+     * @return boolean
+     */
+    public function isTargetedForToday()
+    {
+        return $this->isDateInTargetRange();
+    }
+
+    /**
+     * Get count of tasks targeted for today
+     * 
+     * @return int
+     */
+    public static function getTasksTargetedForTodayCount()
+    {
+        $today = strtotime(date('Y-m-d'));
+        
+        return self::find()
+            ->where(['<=', 'target_start_date', $today])
+            ->andWhere(['>=', 'target_end_date', $today])
+            ->andWhere(['not', ['target_start_date' => null]])
+            ->andWhere(['not', ['target_end_date' => null]])
+            ->count();
     }
 }

@@ -76,6 +76,18 @@ class KanbanBoard
             'sort_order' => 0,
         ];
         
+        // Add "Tasks Targeted for Today" category
+        $targetedTodayCount = Task::getTasksTargetedForTodayCount();
+        $statistics['targeted_today'] = [
+            'count' => $targetedTodayCount,
+            'name' => 'Targeted Today',
+            'color' => '#17a2b8',
+            'icon' => 'fa-bullseye',
+            'display_name' => 'Targeted Today',
+            'days_before_deadline' => -1, // Special indicator
+            'sort_order' => 0.5,
+        ];
+        
         foreach ($settings as $index => $setting) {
             $key = strtolower(str_replace(' ', '_', $setting->name));
             
@@ -452,5 +464,27 @@ class KanbanBoard
             'priority' => SORT_DESC,
             'created_at' => SORT_DESC
         ])->all();
+    }
+
+    /**
+     * Get tasks targeted for today (where today falls within target date range)
+     * @return Task[]
+     */
+    public static function getTasksTargetedForToday()
+    {
+        $today = strtotime(date('Y-m-d'));
+        
+        return Task::find()
+            ->with(['category'])
+            ->where(['<=', 'target_start_date', $today])
+            ->andWhere(['>=', 'target_end_date', $today])
+            ->andWhere(['not', ['target_start_date' => null]])
+            ->andWhere(['not', ['target_end_date' => null]])
+            ->orderBy([
+                'priority' => SORT_DESC,
+                'deadline' => SORT_ASC,
+                'created_at' => SORT_DESC
+            ])
+            ->all();
     }
 }

@@ -1347,13 +1347,34 @@ uasort($allStatistics, function($a, $b) {
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="taskDeadline">Deadline</label>
                                 <input type="datetime-local" class="form-control" id="taskDeadline" name="deadline">
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Target Date Range -->
+                    <div class="row">
                         <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskTargetStartDate">Target Start Date</label>
+                                <input type="date" class="form-control" id="taskTargetStartDate" name="target_start_date">
+                                <small class="form-text text-muted">When should work on this task begin?</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="taskTargetEndDate">Target End Date</label>
+                                <input type="date" class="form-control" id="taskTargetEndDate" name="target_end_date">
+                                <small class="form-text text-muted">When should work on this task finish?</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="taskStatus">Status</label>
                                 <select class="form-control" id="taskStatus" name="status">
@@ -1437,13 +1458,34 @@ uasort($allStatistics, function($a, $b) {
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="editTaskDeadline">Deadline</label>
                                 <input type="datetime-local" class="form-control" id="editTaskDeadline" name="deadline">
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Target Date Range -->
+                    <div class="row">
                         <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskTargetStartDate">Target Start Date</label>
+                                <input type="date" class="form-control" id="editTaskTargetStartDate" name="target_start_date">
+                                <small class="form-text text-muted">When should work on this task begin?</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editTaskTargetEndDate">Target End Date</label>
+                                <input type="date" class="form-control" id="editTaskTargetEndDate" name="target_end_date">
+                                <small class="form-text text-muted">When should work on this task finish?</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label for="editTaskStatus">Status</label>
                                 <select class="form-control" id="editTaskStatus" name="status">
@@ -1757,6 +1799,7 @@ $this->registerJs("
             imageListUrl: '" . Url::to(['/taskmonitor/image/list']) . "',
             imageDeleteUrl: '" . Url::to(['/taskmonitor/image/delete']) . "',
             getDeadlineTasks: '" . Url::to(['get-deadline-tasks']) . "',
+            getTargetedTodayTasks: '" . Url::to(['get-targeted-today-tasks']) . "',
             getCompletionTasks: '" . Url::to(['get-completion-tasks']) . "',
             getCategoryCompletionTasks: '" . Url::to(['get-category-completion-tasks']) . "',
             getTaskChecklistUrl: '" . Url::to(['get-task-checklist']) . "',

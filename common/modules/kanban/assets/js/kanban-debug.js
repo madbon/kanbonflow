@@ -1285,6 +1285,8 @@ var KanbanBoard = {
         $('#editTaskStatus').val(task.status);
         $('#editTaskDeadline').val(task.deadline);
         $('#editTaskAssignedTo').val(task.assigned_to);
+        $('#editTaskTargetStartDate').val(task.target_start_date || '');
+        $('#editTaskTargetEndDate').val(task.target_end_date || '');
         // Explicitly handle the include_in_export value to ensure 0 is properly selected
         var exportValue = '1'; // default
         if (task.include_in_export !== undefined && task.include_in_export !== null) {
@@ -2681,6 +2683,26 @@ $(document).ready(function() {
             
             // Show category completion tasks modal
             showCategoryCompletionTasksModal(categoryId, categoryName);
+        } else if (categoryKey === 'targeted_today') {
+            // Show targeted today tasks modal
+            $('#deadlineTasksModalLabel').text(categoryName + ' Tasks');
+            $('.deadline-tasks-summary').text('Showing ' + taskCount + ' tasks');
+            
+            // Show loading state
+            $('#deadlineTasksModal .modal-body').html(
+                '<div class="text-center py-4">' +
+                    '<div class="spinner-border text-primary" role="status">' +
+                        '<span class="sr-only">Loading...</span>' +
+                    '</div>' +
+                    '<p class="mt-3 text-muted">Loading tasks...</p>' +
+                '</div>'
+            );
+            
+            // Show the modal
+            $('#deadlineTasksModal').modal('show');
+            
+            // Fetch tasks for targeted today
+            fetchTargetedTodayTasks();
         } else {
             // Show deadline tasks modal
             $('#deadlineTasksModalLabel').text(categoryName + ' Tasks');
@@ -2809,6 +2831,106 @@ function showDeadlineTasksError(message) {
             '<button class="btn btn-primary btn-sm" onclick="$(this).closest(\'.modal\').modal(\'hide\')">Close</button>' +
         '</div>'
     );
+}
+
+function fetchTargetedTodayTasks() {
+    var ajaxData = {};
+    
+    // Add CSRF token to form data
+    if (KanbanBoard.config.csrfParam && KanbanBoard.config.csrfToken) {
+        ajaxData[KanbanBoard.config.csrfParam] = KanbanBoard.config.csrfToken;
+    }
+    
+    $.ajax({
+        url: KanbanBoard.config.getTargetedTodayTasks,
+        type: 'GET',
+        data: ajaxData,
+        success: function(response) {
+            if (response.success) {
+                renderTargetedTodayTasks(response.tasks);
+            } else {
+                showDeadlineTasksError(response.message || 'Failed to load tasks');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error fetching targeted today tasks:', error);
+            showDeadlineTasksError('Network error occurred while loading tasks');
+        }
+    });
+}
+
+function renderTargetedTodayTasks(tasks) {
+    var container = $('#deadlineTasksModal .modal-body');
+    
+    if (!tasks || tasks.length === 0) {
+        container.html(
+            '<div class="deadline-tasks-empty">' +
+                '<i class="fas fa-bullseye"></i>' +
+                '<h5>No Tasks Targeted for Today</h5>' +
+                '<p>There are no tasks with target date ranges that include today.</p>' +
+            '</div>'
+        );
+        return;
+    }
+    
+    var html = '<div class="deadline-tasks-grid">';
+    
+    tasks.forEach(function(task) {
+        var priorityClass = 'priority-' + (task.priority || 'medium').toLowerCase();
+        var categoryColor = task.color || '#6c757d';
+        var daysUntilDeadline = task.days_until_deadline;
+        var deadlineText = '';
+        
+        if (daysUntilDeadline === 0) {
+            deadlineText = 'Due today';
+        } else if (daysUntilDeadline < 0) {
+            deadlineText = Math.abs(daysUntilDeadline) + ' days overdue';
+        } else {
+            deadlineText = 'Due in ' + daysUntilDeadline + ' days';
+        }
+        
+        var targetStartDate = new Date(task.target_start_date * 1000).toLocaleDateString();
+        var targetEndDate = new Date(task.target_end_date * 1000).toLocaleDateString();
+        
+        html += '<div class="deadline-task-card" data-task-id="' + task.id + '">';
+        html += '    <div class="deadline-task-header">';
+        html += '        <h5 class="deadline-task-title">' + htmlEscape(task.title) + '</h5>';
+        html += '        <span class="deadline-task-priority ' + priorityClass + '">' + (task.priority || 'Medium') + '</span>';
+        html += '    </div>';
+        html += '    <div class="deadline-task-meta">';
+        html += '        <div class="deadline-task-meta-item">';
+        html += '            <i class="fas fa-clock"></i>';
+        html += '            <span>' + deadlineText + '</span>';
+        html += '        </div>';
+        html += '        <div class="deadline-task-meta-item">';
+        html += '            <i class="fas fa-bullseye"></i>';
+        html += '            <span>Target: ' + targetStartDate + ' - ' + targetEndDate + '</span>';
+        html += '        </div>';
+        
+        if (task.assigned_to_name) {
+            html += '        <div class="deadline-task-meta-item">';
+            html += '            <i class="fas fa-user"></i>';
+            html += '            <span>' + htmlEscape(task.assigned_to_name) + '</span>';
+            html += '        </div>';
+        }
+        html += '    </div>';
+        
+        if (task.description) {
+            html += '    <div class="deadline-task-description">' + htmlEscape(task.description) + '</div>';
+        }
+        
+        html += '    <div class="deadline-task-footer">';
+        html += '        <div class="deadline-task-category" style="background-color: ' + categoryColor + '">';
+        html += '            <i class="' + (task.icon || 'fas fa-circle') + '"></i>';
+        html += '            <span>' + htmlEscape(task.category_name || 'No Category') + '</span>';
+        html += '        </div>';
+        html += '        <div class="deadline-task-status">' + htmlEscape(task.status || 'To Do') + '</div>';
+        html += '    </div>';
+        html += '</div>';
+    });
+    
+    html += '</div>';
+    container.html(html);
 }
 
 // Function to emphasize task in board when clicked from deadline tasks modal

@@ -44,7 +44,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks', 'get-task-checklist', 'add-checklist-item', 'update-checklist-item', 'delete-checklist-item', 'toggle-checklist-item', 'reorder-checklist-items'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-targeted-today-tasks', 'get-completion-tasks', 'get-category-completion-tasks', 'get-task-checklist', 'add-checklist-item', 'update-checklist-item', 'delete-checklist-item', 'toggle-checklist-item', 'reorder-checklist-items'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -63,6 +63,7 @@ class BoardController extends Controller
                     'get-task' => ['GET'],
                     'get-task-details' => ['GET'],
                     'get-deadline-tasks' => ['GET'],
+                    'get-targeted-today-tasks' => ['GET'],
                     'get-completion-tasks' => ['GET', 'POST'],
                     'get-category-completion-tasks' => ['GET', 'POST'],
                     'get-task-checklist' => ['GET'],
@@ -399,6 +400,8 @@ class BoardController extends Controller
         $deadline = Yii::$app->request->post('deadline');
         $status = Yii::$app->request->post('status', 'pending'); // Default to pending
         $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 (Yes)
+        $targetStartDate = Yii::$app->request->post('target_start_date');
+        $targetEndDate = Yii::$app->request->post('target_end_date');
         
         if (empty($title)) {
             return ['success' => false, 'message' => 'Task title is required'];
@@ -416,6 +419,8 @@ class BoardController extends Controller
         $task->status = $status;
         $task->deadline = $deadline ? strtotime($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
+        $task->target_start_date = $targetStartDate ? strtotime($targetStartDate) : null;
+        $task->target_end_date = $targetEndDate ? strtotime($targetEndDate) : null;
         
         // Set position to be at the end of the column
         $maxPosition = Task::find()
@@ -469,6 +474,8 @@ class BoardController extends Controller
                 'deadline' => $task->deadline ? date('Y-m-d\TH:i', $task->deadline) : '',
                 'assigned_to' => $task->assigned_to,
                 'include_in_export' => $task->include_in_export,
+                'target_start_date' => $task->target_start_date ? date('Y-m-d', $task->target_start_date) : '',
+                'target_end_date' => $task->target_end_date ? date('Y-m-d', $task->target_end_date) : '',
             ]
         ];
     }
@@ -490,6 +497,8 @@ class BoardController extends Controller
         $deadline = Yii::$app->request->post('deadline');
         $assignedTo = Yii::$app->request->post('assigned_to');
         $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 if not provided
+        $targetStartDate = Yii::$app->request->post('target_start_date');
+        $targetEndDate = Yii::$app->request->post('target_end_date');
         
         $task = Task::findOne($id);
         if (!$task) {
@@ -516,6 +525,8 @@ class BoardController extends Controller
         $task->status = $status;
         $task->assigned_to = $assignedTo;
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
+        $task->target_start_date = $targetStartDate ? strtotime($targetStartDate) : null;
+        $task->target_end_date = $targetEndDate ? strtotime($targetEndDate) : null;
         
         if ($deadline) {
             $task->deadline = strtotime($deadline);
@@ -931,6 +942,56 @@ class BoardController extends Controller
             
         } catch (Exception $e) {
             Yii::error("Error getting deadline tasks: " . $e->getMessage(), 'kanban');
+            return [
+                'success' => false, 
+                'message' => 'Error loading tasks: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get tasks targeted for today
+     * @return array
+     */
+    public function actionGetTargetedTodayTasks()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        try {
+            $tasks = KanbanBoard::getTasksTargetedForToday();
+            $tasksData = [];
+            $todayStart = strtotime('today');
+            
+            foreach ($tasks as $task) {
+                // Calculate days until deadline
+                $daysUntilDeadline = floor(($task->deadline - $todayStart) / 86400);
+                
+                $tasksData[] = [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'status' => $task->status,
+                    'deadline' => $task->deadline,
+                    'target_start_date' => $task->target_start_date,
+                    'target_end_date' => $task->target_end_date,
+                    'days_until_deadline' => $daysUntilDeadline,
+                    'assigned_to_name' => null, // TODO: Add user relation if needed
+                    'category_name' => $task->category ? $task->category->name : 'No Category',
+                    'color' => $task->category ? $task->category->color : '#6c757d',
+                    'icon' => $task->category ? $task->category->icon : 'fas fa-circle',
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'tasks' => $tasksData,
+                'category' => 'targeted_today',
+                'total_count' => count($tasksData)
+            ];
+            
+        } catch (Exception $e) {
+            Yii::error("Error getting targeted today tasks: " . $e->getMessage(), 'kanban');
             return [
                 'success' => false, 
                 'message' => 'Error loading tasks: ' . $e->getMessage()

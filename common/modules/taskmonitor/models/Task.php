@@ -176,6 +176,26 @@ class Task extends \yii\db\ActiveRecord
     }
 
     /**
+     * Gets query for [[AssignedTo]] User.
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getAssignedTo()
+    {
+        return $this->hasOne(\common\models\User::className(), ['id' => 'assigned_to']);
+    }
+
+    /**
+     * Gets query for [[CreatedBy]] User.
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getCreatedBy()
+    {
+        return $this->hasOne(\common\models\User::className(), ['id' => 'created_by']);
+    }
+
+    /**
      * Get status options
      */
     public static function getStatusOptions()

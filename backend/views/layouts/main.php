@@ -40,6 +40,7 @@ AppAsset::register($this);
         // ['label' => 'Home', 'url' => ['/site/index']],
         // ['label' => 'Task Monitor', 'url' => ['/taskmonitor/default']],
         ['label' => 'Kanban Board', 'url' => ['/kanban/board/index']],
+        ['label' => 'All Tasks', 'url' => ['/activity-log/tasks']],
         ['label' => 'Activity Log', 'url' => ['/activity-log/index']],
         [
             'label' => 'Settings',

@@ -433,6 +433,136 @@ class ActivityLogController extends Controller
     }
     
     /**
+     * Display all tasks in table format with filtering
+     * @return mixed
+     */
+    public function actionTasks()
+    {
+        $request = Yii::$app->request;
+        
+        // Get filter parameters
+        $searchTitle = $request->get('search_title');
+        $categoryId = $request->get('category_id');
+        $searchDescription = $request->get('search_description');
+        $status = $request->get('status');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        $lastUpdateFrom = $request->get('last_update_from');
+        $lastUpdateTo = $request->get('last_update_to');
+        
+        // Build query
+        $query = Task::find()
+            ->with(['category', 'assignedTo', 'createdBy'])
+            ->orderBy(['created_at' => SORT_DESC]);
+        
+        // Apply search filters
+        if ($searchTitle) {
+            $query->andWhere(['like', 'title', $searchTitle]);
+        }
+        if ($categoryId) {
+            $query->andWhere(['category_id' => $categoryId]);
+        }
+        if ($searchDescription) {
+            $query->andWhere(['like', 'description', $searchDescription]);
+        }  
+        if ($status) {
+            $query->andWhere(['status' => $status]);
+        }
+        
+        // Apply date filters for creation date
+        if ($dateFrom) {
+            $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
+        }
+        if ($dateTo) {
+            $toTimestamp = strtotime($dateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'created_at', $toTimestamp]);
+        }
+        
+        // Apply date filters for last update date
+        if ($lastUpdateFrom) {
+            $fromTimestamp = strtotime($lastUpdateFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'updated_at', $fromTimestamp]);
+        }
+        if ($lastUpdateTo) {
+            $toTimestamp = strtotime($lastUpdateTo . ' 23:59:59');
+            $query->andWhere(['<=', 'updated_at', $toTimestamp]);
+        }
+        
+        // Create data provider with pagination
+        $dataProvider = new ActiveDataProvider([
+            'query' => $query,
+            'pagination' => [
+                'pageSize' => 25,
+            ],
+            'sort' => [
+                'defaultOrder' => [
+                    'created_at' => SORT_DESC,
+                ],
+                'attributes' => [
+                    'title',
+                    'status', 
+                    'created_at',
+                    'updated_at',
+                    'category' => [
+                        'asc' => ['task_categories.name' => SORT_ASC],
+                        'desc' => ['task_categories.name' => SORT_DESC],
+                    ],
+                ],
+            ],
+        ]);
+        
+        // Get filter options
+        $categories = ArrayHelper::map(
+            TaskCategory::find()
+                ->where(['is_active' => 1])
+                ->orderBy(['name' => SORT_ASC])
+                ->all(),
+            'id',
+            'name'
+        );
+        
+        // Get available statuses from kanban columns
+        $statuses = [];
+        $kanbanColumnClass = '\common\modules\kanban\models\KanbanColumn';
+        if (class_exists($kanbanColumnClass)) {
+            $statuses = ArrayHelper::map(
+                $kanbanColumnClass::find()
+                    ->where(['is_active' => 1])
+                    ->orderBy(['position' => SORT_ASC])
+                    ->all(),
+                'status_key',
+                'name'
+            );
+        }
+        
+        // Get statistics
+        $totalTasks = Task::find()->count();
+        $tasksByStatus = [];
+        foreach ($statuses as $statusKey => $statusName) {
+            $tasksByStatus[$statusKey] = Task::find()->where(['status' => $statusKey])->count();
+        }
+        
+        return $this->render('tasks', [
+            'dataProvider' => $dataProvider,
+            'categories' => $categories,
+            'statuses' => $statuses,
+            'totalTasks' => $totalTasks,
+            'tasksByStatus' => $tasksByStatus,
+            'filters' => [
+                'search_title' => $searchTitle,
+                'category_id' => $categoryId,
+                'search_description' => $searchDescription,
+                'status' => $status,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'last_update_from' => $lastUpdateFrom,
+                'last_update_to' => $lastUpdateTo,
+            ],
+        ]);
+    }
+
+    /**
      * Export activities as a simple table view
      * @return mixed
      */

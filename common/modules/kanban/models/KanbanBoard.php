@@ -109,10 +109,6 @@ class KanbanBoard
             ];
         }
         
-        // Add completion statistics
-        $completionStats = self::getCompletionStatistics();
-        $statistics = array_merge($statistics, $completionStats);
-        
         // Sort statistics by sort_order
         uasort($statistics, function($a, $b) {
             if ($a['sort_order'] == $b['sort_order']) {

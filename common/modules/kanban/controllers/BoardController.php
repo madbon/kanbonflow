@@ -374,6 +374,7 @@ class BoardController extends Controller
         $priority = Yii::$app->request->post('priority');
         $deadline = Yii::$app->request->post('deadline');
         $status = Yii::$app->request->post('status', 'pending'); // Default to pending
+        $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 (Yes)
         
         if (empty($title)) {
             return ['success' => false, 'message' => 'Task title is required'];
@@ -390,6 +391,7 @@ class BoardController extends Controller
         $task->priority = $priority ?: Task::PRIORITY_MEDIUM;
         $task->status = $status;
         $task->deadline = $deadline ? strtotime($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
+        $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
         
         // Set position to be at the end of the column
         $maxPosition = Task::find()
@@ -442,6 +444,7 @@ class BoardController extends Controller
                 'status' => $task->status,
                 'deadline' => $task->deadline ? date('Y-m-d\TH:i', $task->deadline) : '',
                 'assigned_to' => $task->assigned_to,
+                'include_in_export' => $task->include_in_export,
             ]
         ];
     }
@@ -462,6 +465,7 @@ class BoardController extends Controller
         $status = Yii::$app->request->post('status');
         $deadline = Yii::$app->request->post('deadline');
         $assignedTo = Yii::$app->request->post('assigned_to');
+        $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 if not provided
         
         $task = Task::findOne($id);
         if (!$task) {
@@ -487,6 +491,7 @@ class BoardController extends Controller
         $task->priority = $priority;
         $task->status = $status;
         $task->assigned_to = $assignedTo;
+        $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
         
         if ($deadline) {
             $task->deadline = strtotime($deadline);

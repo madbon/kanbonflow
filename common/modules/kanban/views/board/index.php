@@ -1067,6 +1067,17 @@ uasort($allStatistics, function($a, $b) {
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label for="taskIncludeInExport">Include in Activity Log Export</label>
+                        <select class="form-control" id="taskIncludeInExport" name="include_in_export">
+                            <option value="1" selected>Yes - Include this task's activity logs in exports</option>
+                            <option value="0">No - Hide this task's activity logs from exports</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            Choose whether to include this task's activity logs when exporting activity reports.
+                        </small>
+                    </div>
+                    
                     <input type="hidden" id="taskDefaultStatus" name="default_status" value="pending">
                 </form>
             </div>
@@ -1144,6 +1155,17 @@ uasort($allStatistics, function($a, $b) {
                                 </select>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTaskIncludeInExport">Include in Activity Log Export</label>
+                        <select class="form-control" id="editTaskIncludeInExport" name="include_in_export">
+                            <option value="1">Yes - Include this task's activity logs in exports</option>
+                            <option value="0">No - Hide this task's activity logs from exports</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            Choose whether to include this task's activity logs when exporting activity reports.
+                        </small>
                     </div>
                     
                     <div class="row">

@@ -725,6 +725,7 @@ var KanbanBoard = {
         $('#editTaskStatus').val(task.status);
         $('#editTaskDeadline').val(task.deadline);
         $('#editTaskAssignedTo').val(task.assigned_to);
+        $('#editTaskIncludeInExport').val(task.include_in_export || '1');
         
         // Show modal
         $('#editTaskModal').modal('show');

@@ -62,6 +62,13 @@ class ActivityLogController extends Controller
             ->with(['task', 'user'])
             ->orderBy(['created_at' => SORT_DESC]);
         
+        // Filter out tasks that are excluded from export (also applies to main view for consistency)
+        $query->joinWith('task')
+              ->andWhere(['or', 
+                  ['tasks.include_in_export' => 1], 
+                  ['tasks.include_in_export' => null] // Include tasks where field is null (backwards compatibility)
+              ]);
+        
         // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {
             $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
@@ -147,6 +154,13 @@ class ActivityLogController extends Controller
         $query = TaskHistory::find()
             ->with(['task', 'user'])
             ->orderBy(['created_at' => SORT_DESC]);
+        
+        // Filter out tasks that are excluded from export
+        $query->joinWith('task')
+              ->andWhere(['or', 
+                  ['tasks.include_in_export' => 1], 
+                  ['tasks.include_in_export' => null] // Include tasks where field is null (backwards compatibility)
+              ]);
         
         // Apply same filters as index (convert date strings to timestamps)
         if ($dateFrom) {
@@ -393,6 +407,13 @@ class ActivityLogController extends Controller
         $query = TaskHistory::find()
             ->with(['task', 'task.category', 'user'])
             ->orderBy(['created_at' => SORT_DESC]);
+        
+        // Filter out tasks that are excluded from export
+        $query->joinWith('task')
+              ->andWhere(['or', 
+                  ['tasks.include_in_export' => 1], 
+                  ['tasks.include_in_export' => null] // Include tasks where field is null (backwards compatibility)
+              ]);
         
         // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {

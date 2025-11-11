@@ -23,6 +23,7 @@ use common\modules\taskmonitor\behaviors\TaskHistoryBehavior;
  * @property int $created_at
  * @property int $updated_at
  * @property int $position
+ * @property boolean $include_in_export
  *
  * @property TaskCategory $category
  * @property TaskImage[] $images
@@ -77,6 +78,8 @@ class Task extends \yii\db\ActiveRecord
         return [
             [['category_id', 'title', 'deadline'], 'required'],
             [['category_id', 'deadline', 'completed_at', 'assigned_to', 'created_by', 'created_at', 'updated_at', 'position'], 'integer'],
+            [['include_in_export'], 'boolean'],
+            [['include_in_export'], 'default', 'value' => 1],
             [['description'], 'string'],
             [['title'], 'string', 'max' => 255],
             [['priority'], 'string', 'max' => 20],
@@ -106,6 +109,7 @@ class Task extends \yii\db\ActiveRecord
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
             'position' => 'Position',
+            'include_in_export' => 'Include in Activity Log Export',
         ];
     }
 
@@ -278,5 +282,21 @@ class Task extends \yii\db\ActiveRecord
             return true;
         }
         return false;
+    }
+
+    /**
+     * Check if attribute value is empty
+     */
+    public function isEmpty($attribute)
+    {
+        if ($attribute === 'include_in_export') {
+            // For include_in_export, only null and empty string are considered empty
+            // This allows 0 (false) to be a valid value
+            $value = $this->$attribute;
+            return $value === null || $value === '';
+        }
+        
+        // Use parent implementation for other attributes
+        return parent::isEmpty($attribute);
     }
 }

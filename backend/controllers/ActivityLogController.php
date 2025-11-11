@@ -445,6 +445,10 @@ class ActivityLogController extends Controller
         $dateTo = $request->get('date_to');
         $lastUpdateFrom = $request->get('last_update_from');
         $lastUpdateTo = $request->get('last_update_to');
+        $targetStartFrom = $request->get('target_start_from');
+        $targetStartTo = $request->get('target_start_to');
+        $targetEndFrom = $request->get('target_end_from');
+        $targetEndTo = $request->get('target_end_to');
         
         // Build query
         $query = Task::find()
@@ -485,6 +489,26 @@ class ActivityLogController extends Controller
             $query->andWhere(['<=', 'updated_at', $toTimestamp]);
         }
         
+        // Apply target start date filters
+        if ($targetStartFrom) {
+            $fromTimestamp = strtotime($targetStartFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'target_start_date', $fromTimestamp]);
+        }
+        if ($targetStartTo) {
+            $toTimestamp = strtotime($targetStartTo . ' 23:59:59');
+            $query->andWhere(['<=', 'target_start_date', $toTimestamp]);
+        }
+        
+        // Apply target end date filters
+        if ($targetEndFrom) {
+            $fromTimestamp = strtotime($targetEndFrom . ' 00:00:00');
+            $query->andWhere(['>=', 'target_end_date', $fromTimestamp]);
+        }
+        if ($targetEndTo) {
+            $toTimestamp = strtotime($targetEndTo . ' 23:59:59');
+            $query->andWhere(['<=', 'target_end_date', $toTimestamp]);
+        }
+        
         // Create data provider with pagination
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
@@ -500,6 +524,8 @@ class ActivityLogController extends Controller
                     'status', 
                     'created_at',
                     'updated_at',
+                    'target_start_date',
+                    'target_end_date',
                     'category' => [
                         'asc' => ['task_categories.name' => SORT_ASC],
                         'desc' => ['task_categories.name' => SORT_DESC],
@@ -554,6 +580,10 @@ class ActivityLogController extends Controller
                 'date_to' => $dateTo,
                 'last_update_from' => $lastUpdateFrom,
                 'last_update_to' => $lastUpdateTo,
+                'target_start_from' => $targetStartFrom,
+                'target_start_to' => $targetStartTo,
+                'target_end_from' => $targetEndFrom,
+                'target_end_to' => $targetEndTo,
             ],
         ]);
     }

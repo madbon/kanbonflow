@@ -86,6 +86,16 @@ $this->registerCss("
         color: #0056b3;
         text-decoration: underline;
     }
+    .target-date-filters {
+        background-color: #e8f4f8;
+        border-radius: 6px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    .target-date-filters .form-label {
+        color: #17a2b8;
+        font-weight: 600;
+    }
 ");
 
 $this->registerJs("
@@ -187,6 +197,19 @@ $this->registerJs("
                 html += ' <span class=\"badge badge-danger\">OVERDUE</span>';
             }
             html += '</p>';
+            html += '</div>';
+        }
+        
+        if (task.target_start_date || task.target_end_date) {
+            html += '<div class=\"mb-3\">';
+            html += '<h6><i class=\"fas fa-bullseye\"></i> Target Dates</h6>';
+            if (task.target_start_date && task.target_end_date) {
+                html += '<p class=\"text-info\"><i class=\"fa fa-calendar-alt\"></i> ' + task.target_start_date + ' - ' + task.target_end_date + '</p>';
+            } else if (task.target_start_date) {
+                html += '<p class=\"text-info\"><i class=\"fa fa-play\"></i> From ' + task.target_start_date + '</p>';
+            } else if (task.target_end_date) {
+                html += '<p class=\"text-info\"><i class=\"fa fa-stop\"></i> Until ' + task.target_end_date + '</p>';
+            }
             html += '</div>';
         }
         
@@ -323,6 +346,40 @@ $this->registerJs("
                 </div>
             </div>
             
+            <div class="target-date-filters">
+                <h6 class="mb-3 text-info"><i class="fa fa-bullseye"></i> Target Date Filters</h6>
+                <div class="row filter-row">
+                    <div class="col-md-3">
+                        <label for="target_start_from" class="form-label"><strong>Target Start From</strong></label>
+                        <?= Html::input('date', 'target_start_from', $filters['target_start_from'], [
+                            'class' => 'form-control',
+                            'id' => 'target_start_from'
+                        ]) ?>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="target_start_to" class="form-label"><strong>Target Start To</strong></label>
+                        <?= Html::input('date', 'target_start_to', $filters['target_start_to'], [
+                            'class' => 'form-control',
+                            'id' => 'target_start_to'
+                        ]) ?>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="target_end_from" class="form-label"><strong>Target End From</strong></label>
+                        <?= Html::input('date', 'target_end_from', $filters['target_end_from'], [
+                            'class' => 'form-control',
+                            'id' => 'target_end_from'
+                        ]) ?>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="target_end_to" class="form-label"><strong>Target End To</strong></label>
+                        <?= Html::input('date', 'target_end_to', $filters['target_end_to'], [
+                            'class' => 'form-control',
+                            'id' => 'target_end_to'
+                        ]) ?>
+                    </div>
+                </div>
+            </div>
+            
             <div class="text-center mt-3">
                 <?= Html::submitButton('Apply Filters', ['class' => 'btn btn-primary']) ?>
                 <?= Html::button('Clear Filters', ['class' => 'btn btn-outline-secondary', 'id' => 'clear-filters']) ?>
@@ -416,6 +473,30 @@ $this->registerJs("
                             return '<small>' . date('Y-m-d H:i', $model->updated_at) . '</small>';
                         },
                         'headerOptions' => ['style' => 'width: 120px;'],
+                    ],
+                    [
+                        'attribute' => 'target_start_date',
+                        'label' => 'Target Start',
+                        'format' => 'raw',
+                        'value' => function ($model) {
+                            if ($model->target_start_date) {
+                                return '<small class="text-info"><i class="fa fa-play"></i> ' . date('Y-m-d', $model->target_start_date) . '</small>';
+                            }
+                            return '<small class="text-muted">-</small>';
+                        },
+                        'headerOptions' => ['style' => 'width: 110px;'],
+                    ],
+                    [
+                        'attribute' => 'target_end_date', 
+                        'label' => 'Target End',
+                        'format' => 'raw',
+                        'value' => function ($model) {
+                            if ($model->target_end_date) {
+                                return '<small class="text-info"><i class="fa fa-stop"></i> ' . date('Y-m-d', $model->target_end_date) . '</small>';
+                            }
+                            return '<small class="text-muted">-</small>';
+                        },
+                        'headerOptions' => ['style' => 'width: 110px;'],
                     ],
                     [
                         'class' => 'yii\grid\ActionColumn',

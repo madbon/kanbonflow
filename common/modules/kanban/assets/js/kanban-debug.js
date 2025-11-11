@@ -2906,7 +2906,7 @@ function renderTargetedTodayTasks(tasks) {
         var targetStartDate = new Date(task.target_start_date * 1000).toLocaleDateString();
         var targetEndDate = new Date(task.target_end_date * 1000).toLocaleDateString();
         
-        html += '<div class="deadline-task-card" data-task-id="' + task.id + '">';
+        html += '<div class="deadline-task-card" data-task-id="' + task.id + '" onclick="emphasizeTaskInBoard(' + task.id + ')">';
         html += '    <div class="deadline-task-header">';
         html += '        <h5 class="deadline-task-title">' + htmlEscape(task.title) + '</h5>';
         html += '        <span class="deadline-task-priority ' + priorityClass + '">' + (task.priority || 'Medium') + '</span>';

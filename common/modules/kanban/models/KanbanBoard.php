@@ -194,9 +194,9 @@ class KanbanBoard
                 
             $totalCount = $completedCount + $notCompletedCount;
             
-            if ($totalCount > 0) { // Only include categories that have tasks
+            if ($notCompletedCount > 0) { // Only include categories that have non-completed tasks
                 $statistics['category_' . $category->id] = [
-                    'count' => $totalCount,
+                    'count' => $notCompletedCount, // Show only non-completed count
                     'completed_count' => $completedCount,
                     'not_completed_count' => $notCompletedCount,
                     'category_id' => $category->id,
@@ -222,9 +222,9 @@ class KanbanBoard
             
         $noCategoryTotal = $noCategoryCompleted + $noCategoryNotCompleted;
         
-        if ($noCategoryTotal > 0) {
+        if ($noCategoryNotCompleted > 0) { // Only show if there are non-completed tasks
             $statistics['category_none'] = [
-                'count' => $noCategoryTotal,
+                'count' => $noCategoryNotCompleted, // Show only non-completed count
                 'completed_count' => $noCategoryCompleted,
                 'not_completed_count' => $noCategoryNotCompleted,
                 'category_id' => null,

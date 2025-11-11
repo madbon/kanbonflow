@@ -2578,15 +2578,15 @@ function fetchCategoryCompletionTasks(categoryId) {
 function renderCategoryCompletionTasks(tasks, completedCount, notCompletedCount) {
     var container = $('#categoryCompletionTasksModal .modal-body');
     
-    // Update summary
-    $('#categoryCompletionTasksCount').text(completedCount + ' completed, ' + notCompletedCount + ' not completed');
+    // Update summary to show only non-completed count
+    $('#categoryCompletionTasksCount').text(notCompletedCount + ' active tasks');
     
-    var html = '<div class="completion-tasks-container">';
+    var html = '<div class="completion-tasks-container single-column">';
     
-    // Not Completed Column
-    html += '<div class="completion-tasks-column">';
+    // Only show Not Completed Column
+    html += '<div class="completion-tasks-column full-width">';
     html += '    <div class="completion-tasks-column-header not-completed">';
-    html += '        <span><i class="fa fa-clock"></i> Not Completed</span>';
+    html += '        <span><i class="fa fa-clock"></i> Active Tasks</span>';
     html += '        <span class="completion-count-badge not-completed">' + notCompletedCount + '</span>';
     html += '    </div>';
     html += '    <div class="completion-tasks-column-body">';
@@ -2605,27 +2605,7 @@ function renderCategoryCompletionTasks(tasks, completedCount, notCompletedCount)
     html += '    </div>';
     html += '</div>';
     
-    // Completed Column
-    html += '<div class="completion-tasks-column">';
-    html += '    <div class="completion-tasks-column-header completed">';
-    html += '        <span><i class="fa fa-check-circle"></i> Completed</span>';
-    html += '        <span class="completion-count-badge completed">' + completedCount + '</span>';
-    html += '    </div>';
-    html += '    <div class="completion-tasks-column-body">';
-    
-    if (tasks.completed && tasks.completed.length > 0) {
-        tasks.completed.forEach(function(task) {
-            html += renderCompletionTaskCard(task, 'completed');
-        });
-    } else {
-        html += '<div class="text-center text-muted py-4">';
-        html += '    <i class="fa fa-hourglass-half fa-2x mb-2"></i>';
-        html += '    <p>No completed tasks in this category yet.</p>';
-        html += '</div>';
-    }
-    
-    html += '    </div>';
-    html += '</div>';
+    // Remove the completed column entirely
     html += '</div>';
     
     container.html(html);

@@ -537,10 +537,20 @@ $this->registerCss('
         overflow: hidden;
     }
     
+    .completion-tasks-container.single-column {
+        gap: 0;
+        justify-content: center;
+    }
+    
     .completion-tasks-column {
         flex: 1;
         display: flex;
         flex-direction: column;
+    }
+    
+    .completion-tasks-column.full-width {
+        max-width: 800px;
+        margin: 0 auto;
     }
     
     .completion-tasks-column-header {

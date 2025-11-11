@@ -692,9 +692,9 @@ $this->registerJs('
     
     // Add confirmation for Export to List
     $("a[href*=\'export-table\']").on("click", function(e) {
-        var activityCount = <?= $dataProvider->getTotalCount() ?>;
+        var activityCount = ' . (int)$dataProvider->getTotalCount() . ';
         if (activityCount > 100) {
-            if (!confirm("You are about to export " + activityCount + " activities. This may take a moment to load. Continue?")) {
+            if (!confirm("You are about to export " + activityCount + " tasks. This may take a moment to load. Continue?")) {
                 e.preventDefault();
                 return false;
             }
@@ -747,9 +747,9 @@ $this->registerJs('
         }
         
         // Show confirmation for large exports
-        var activityCount = ' . $dataProvider->getTotalCount() . ';
+        var activityCount = ' . (int)$dataProvider->getTotalCount() . ';
         if (activityCount > 100) {
-            if (!confirm("You are about to export " + activityCount + " activities. This may take a moment to load. Continue?")) {
+            if (!confirm("You are about to export " + activityCount + " tasks. This may take a moment to load. Continue?")) {
                 return false;
             }
         }

@@ -584,51 +584,61 @@ class ActivityLogController extends Controller
             $actionTypes = [$legacyActionType];
         }
         
-        // Build query
-        $query = TaskHistory::find()
-            ->with(['task', 'task.category', 'user'])
-            ->orderBy(['created_at' => SORT_DESC]);
-        
-        // Filter out tasks that are excluded from export
-        $query->joinWith('task')
-              ->andWhere(['or', 
-                  ['tasks.include_in_export' => 1], 
-                  ['tasks.include_in_export' => null] // Include tasks where field is null (backwards compatibility)
-              ]);
+        // Build query to get tasks that have been included in activity filters
+        // First get task IDs from activity history that match the filters
+        $activityQuery = TaskHistory::find();
         
         // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {
             $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
-            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
+            $activityQuery->andWhere(['>=', 'created_at', $fromTimestamp]);
         }
         if ($dateTo) {
             $toTimestamp = strtotime($dateTo . ' 23:59:59');
-            $query->andWhere(['<=', 'created_at', $toTimestamp]);
+            $activityQuery->andWhere(['<=', 'created_at', $toTimestamp]);
         }
         
         // Apply other filters
         if (!empty($actionTypes)) {
-            $query->andWhere(['action_type' => $actionTypes]);
-        }
-        if ($categoryId) {
-            $query->joinWith('task')
-                  ->andWhere(['tasks.category_id' => $categoryId]);
+            $activityQuery->andWhere(['action_type' => $actionTypes]);
         }
         if ($taskId) {
-            $query->andWhere(['task_id' => $taskId]);
+            $activityQuery->andWhere(['task_id' => $taskId]);
         }
         if ($userId) {
-            $query->andWhere(['user_id' => $userId]);
+            $activityQuery->andWhere(['user_id' => $userId]);
         }
         
-        // Get all activities (limit to prevent memory issues)
-        $activities = $query->limit(500)->all();
+        // Get unique task IDs from the filtered activities
+        $taskIds = $activityQuery->select('task_id')->distinct()->column();
+        
+        // Now build the main query to get tasks
+        $query = Task::find()
+            ->with(['category', 'assignedTo', 'createdBy'])
+            ->where(['or', 
+                ['include_in_export' => 1], 
+                ['include_in_export' => null] // Include tasks where field is null (backwards compatibility)
+            ])
+            ->orderBy(['updated_at' => SORT_DESC]);
+        
+        // If we have filtered task IDs from activities, use them
+        if (!empty($taskIds)) {
+            $query->andWhere(['id' => $taskIds]);
+        }
+        
+        // Apply category filter directly to tasks
+        if ($categoryId) {
+            $query->andWhere(['category_id' => $categoryId]);
+        }
+        
+        // Get all tasks (limit to prevent memory issues)
+        $tasks = $query->limit(500)->all();
         
         // Set the layout to blank for clean table display
         $this->layout = false;
         
-        return $this->render('export-table', [
-            'activities' => $activities,
+        return $this->render('tasks-export-table', [
+            'tasks' => $tasks,
             'filters' => [
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,

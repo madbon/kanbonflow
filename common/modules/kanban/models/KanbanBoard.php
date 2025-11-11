@@ -22,10 +22,20 @@ class KanbanBoard
         $columns = KanbanColumn::getActiveColumns();
         $tasks = [];
         
+        // Calculate timestamp for 7 days ago
+        $sevenDaysAgo = time() - (7 * 24 * 60 * 60);
+        
         foreach ($columns as $column) {
-            $tasks[$column->status_key] = Task::find()
+            $query = Task::find()
                 ->where(['status' => $column->status_key])
-                ->with(['category', 'images'])
+                ->with(['category', 'images']);
+            
+            // For completed tasks, only show those completed within the last 7 days
+            if ($column->status_key === Task::STATUS_COMPLETED) {
+                $query->andWhere(['>=', 'completed_at', $sevenDaysAgo]);
+            }
+            
+            $tasks[$column->status_key] = $query
                 ->orderBy(['position' => SORT_ASC, 'created_at' => SORT_DESC])
                 ->all();
         }

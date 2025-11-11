@@ -50,11 +50,14 @@ $this->registerCss("
     .status-in-progress { background-color: #74b9ff; color: white; }
     .status-completed { background-color: #00b894; color: white; }
     .status-cancelled { background-color: #fd79a8; color: white; }
-    .task-description {
-        max-width: 300px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .tasks-table .table td {
+        padding: 12px 8px;
+        vertical-align: top;
+    }
+    .tasks-table .table td:nth-child(3) {
+        word-wrap: break-word;
+        white-space: normal;
+        max-width: 350px;
     }
 ");
 
@@ -83,14 +86,109 @@ $this->registerJs("
         e.preventDefault();
         var taskId = $(this).data('task-id');
         
-        // Load task details via AJAX
-        $.get('/kanban/board/get-task-details', {id: taskId}, function(data) {
-            $('#taskDetailsModal .modal-body').html(data);
-            $('#taskDetailsModal').modal('show');
-        }).fail(function() {
-            alert('Error loading task details');
+        // Load task details via AJAX - fix the URL to use correct path
+        $.get('" . Url::to(['/kanban/board/get-task-details']) . "', {id: taskId}, function(response) {
+            if (response.success) {
+                var task = response.task;
+                var html = buildTaskDetailsHTML(task);
+                $('#taskDetailsModal .modal-body').html(html);
+                $('#taskDetailsModal .modal-title').text('Task: ' + task.title);
+                $('#taskDetailsModal').modal('show');
+            } else {
+                alert('Error: ' + response.message);
+            }
+        }).fail(function(xhr, status, error) {
+            console.error('AJAX Error:', xhr.responseText);
+            alert('Error loading task details: ' + error);
         });
     });
+    
+    function buildTaskDetailsHTML(task) {
+        var statusClass = 'badge-secondary';
+        switch(task.status) {
+            case 'pending': statusClass = 'badge-warning'; break;
+            case 'in_progress': statusClass = 'badge-info'; break;
+            case 'completed': statusClass = 'badge-success'; break;
+            case 'cancelled': statusClass = 'badge-danger'; break;
+        }
+        
+        var priorityClass = 'badge-secondary';
+        switch(task.priority) {
+            case 'low': priorityClass = 'badge-light'; break;
+            case 'medium': priorityClass = 'badge-warning'; break;
+            case 'high': priorityClass = 'badge-danger'; break;
+            case 'critical': priorityClass = 'badge-dark'; break;
+        }
+        
+        var html = '<div class=\"task-details\">';
+        html += '<div class=\"row\">';
+        html += '<div class=\"col-md-6\">';
+        html += '<h6><i class=\"fas fa-info-circle\"></i> Status</h6>';
+        html += '<span class=\"badge ' + statusClass + ' mb-3\">' + (task.status_label || task.status || 'Unknown') + '</span>';
+        html += '</div>';
+        html += '<div class=\"col-md-6\">';
+        html += '<h6><i class=\"fas fa-exclamation-triangle\"></i> Priority</h6>';
+        html += '<span class=\"badge ' + priorityClass + ' mb-3\">' + (task.priority_label || task.priority || 'Normal') + '</span>';
+        html += '</div>';
+        html += '</div>';
+        
+        html += '<div class=\"mb-3\">';
+        html += '<h6><i class=\"fas fa-align-left\"></i> Description</h6>';
+        html += '<div class=\"border p-3 bg-light\">' + (task.description || 'No description provided') + '</div>';
+        html += '</div>';
+        
+        html += '<div class=\"row\">';
+        html += '<div class=\"col-md-6\">';
+        html += '<h6><i class=\"fas fa-calendar-plus\"></i> Created</h6>';
+        html += '<p>' + (task.created_at || 'Unknown') + '</p>';
+        html += '</div>';
+        html += '<div class=\"col-md-6\">';
+        html += '<h6><i class=\"fas fa-calendar-check\"></i> Last Updated</h6>';
+        html += '<p>' + (task.updated_at || 'Unknown') + '</p>';
+        html += '</div>';
+        html += '</div>';
+        
+        if (task.deadline) {
+            html += '<div class=\"mb-3\">';
+            html += '<h6><i class=\"fas fa-clock\"></i> Deadline</h6>';
+            html += '<p class=\"' + (task.isOverdue ? 'text-danger' : 'text-info') + '\">';
+            html += task.deadline;
+            if (task.isOverdue) {
+                html += ' <span class=\"badge badge-danger\">OVERDUE</span>';
+            }
+            html += '</p>';
+            html += '</div>';
+        }
+        
+        if (task.completedAt) {
+            html += '<div class=\"mb-3\">';
+            html += '<h6><i class=\"fas fa-check-circle\"></i> Completed</h6>';
+            html += '<p class=\"text-success\">' + task.completedAt + '</p>';
+            html += '</div>';
+        }
+        
+        if (task.images && task.images.length > 0) {
+            html += '<div class=\"mb-3\">';
+            html += '<h6><i class=\"fas fa-images\"></i> Attachments</h6>';
+            html += '<div class=\"row\">';
+            for (var i = 0; i < task.images.length; i++) {
+                var img = task.images[i];
+                html += '<div class=\"col-md-4 mb-2\">';
+                html += '<div class=\"card\">';
+                html += '<img src=\"' + img.url + '\" class=\"card-img-top\" style=\"height: 100px; object-fit: cover;\" alt=\"' + img.name + '\">';
+                html += '<div class=\"card-body p-2\">';
+                html += '<small class=\"text-muted\">' + img.name + ' (' + img.size + ')</small>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+        }
+        
+        html += '</div>';
+        return html;
+    }
 ");
 ?>
 
@@ -222,21 +320,14 @@ $this->registerJs("
                     [
                         'attribute' => 'title',
                         'label' => 'Task Title',
-                        'format' => 'raw',
-                        'value' => function ($model) {
-                            return '<strong>' . Html::encode($model->title) . '</strong>';
-                        },
+                        'format' => 'text',
                         'headerOptions' => ['style' => 'width: 200px;'],
                     ],
                     [
                         'attribute' => 'description',
                         'label' => 'Description',
-                        'format' => 'raw',
-                        'value' => function ($model) {
-                            $description = Html::encode($model->description);
-                            return '<div class="task-description" title="' . $description . '">' . $description . '</div>';
-                        },
-                        'headerOptions' => ['style' => 'width: 300px;'],
+                        'format' => 'text',
+                        'headerOptions' => ['style' => 'width: 350px;'],
                     ],
                     [
                         'attribute' => 'created_at',
@@ -252,8 +343,26 @@ $this->registerJs("
                         'label' => 'Status',
                         'format' => 'raw',
                         'value' => function ($model) {
+                            // First try Task model status options
                             $statusOptions = Task::getStatusOptions();
-                            $status = isset($statusOptions[$model->status]) ? $statusOptions[$model->status] : 'Unknown';
+                            $status = isset($statusOptions[$model->status]) ? $statusOptions[$model->status] : null;
+                            
+                            // If not found, check if it's a kanban column status_key
+                            if (!$status) {
+                                $kanbanColumnClass = '\common\modules\kanban\models\KanbanColumn';
+                                if (class_exists($kanbanColumnClass)) {
+                                    $column = $kanbanColumnClass::find()->where(['status_key' => $model->status])->one();
+                                    if ($column) {
+                                        $status = $column->name;
+                                    }
+                                }
+                            }
+                            
+                            // Final fallback
+                            if (!$status) {
+                                $status = ucfirst(str_replace('_', ' ', $model->status));
+                            }
+                            
                             $statusClass = 'status-' . strtolower(str_replace(' ', '-', $status));
                             return '<span class="status-badge ' . $statusClass . '">' . $status . '</span>';
                         },

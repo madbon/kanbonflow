@@ -574,20 +574,9 @@ class BoardController extends Controller
         $deadline = $task->deadline ? date('M j, Y g:i A', $task->deadline) : 'No deadline';
         $completedAt = $task->completed_at ? date('M j, Y g:i A', $task->completed_at) : null;
 
-        // Get priority and status labels
-        $priorityLabels = [
-            'low' => 'Low',
-            'medium' => 'Medium', 
-            'high' => 'High',
-            'critical' => 'Critical'
-        ];
-
-        $statusLabels = [
-            'pending' => 'To Do',
-            'in_progress' => 'In Progress',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled'
-        ];
+        // Get priority and status labels from the Task model to ensure consistency
+        $priorityLabels = Task::getPriorityOptions();
+        $statusLabels = Task::getStatusOptions();
 
         // Calculate days until deadline
         $daysUntilDeadline = null;

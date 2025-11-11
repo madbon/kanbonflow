@@ -68,7 +68,7 @@ class ActivityLogController extends Controller
         // Build query
         $query = TaskHistory::find()
             ->with(['task', 'user'])
-            ->orderBy(['created_at' => SORT_DESC]);
+            ->orderBy(['task_history.created_at' => SORT_DESC]);
         
         // Filter out tasks that are excluded from export (also applies to main view for consistency)
         $query->joinWith('task')
@@ -80,13 +80,13 @@ class ActivityLogController extends Controller
         // Apply date filters (convert date strings to timestamps)
         if ($dateFrom) {
             $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
-            $query->andWhere(['>=', 'created_at', $fromTimestamp]);
+            $query->andWhere(['>=', 'task_history.created_at', $fromTimestamp]);
             // Debug: log the conversion
             \Yii::info("Date filter FROM: $dateFrom -> $fromTimestamp (" . date('Y-m-d H:i:s', $fromTimestamp) . ")", 'activity-log');
         }
         if ($dateTo) {
             $toTimestamp = strtotime($dateTo . ' 23:59:59');
-            $query->andWhere(['<=', 'created_at', $toTimestamp]);
+            $query->andWhere(['<=', 'task_history.created_at', $toTimestamp]);
             // Debug: log the conversion  
             \Yii::info("Date filter TO: $dateTo -> $toTimestamp (" . date('Y-m-d H:i:s', $toTimestamp) . ")", 'activity-log');
         }
@@ -112,11 +112,7 @@ class ActivityLogController extends Controller
             'pagination' => [
                 'pageSize' => 20,
             ],
-            'sort' => [
-                'defaultOrder' => [
-                    'created_at' => SORT_DESC,
-                ]
-            ],
+            'sort' => false, // Disable sorting since we're ordering in the query itself
         ]);
         
         // Get filter options
@@ -638,12 +634,40 @@ class ActivityLogController extends Controller
         $taskExtraData = [];
         
         foreach ($tasks as $task) {
-            // Get the last description from task_history
-            $lastHistory = TaskHistory::find()
+            // Get task history descriptions based on date filters
+            $historyQuery = TaskHistory::find()
                 ->where(['task_id' => $task->id])
-                ->andWhere(['!=', 'description', ''])
-                ->orderBy(['created_at' => SORT_DESC])
-                ->one();
+                ->andWhere(['!=', 'description', '']);
+            
+            // If date filters are applied, get all descriptions within date range
+            if ($dateFrom || $dateTo) {
+                if ($dateFrom) {
+                    $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
+                    $historyQuery->andWhere(['>=', 'created_at', $fromTimestamp]);
+                }
+                if ($dateTo) {
+                    $toTimestamp = strtotime($dateTo . ' 23:59:59');
+                    $historyQuery->andWhere(['<=', 'created_at', $toTimestamp]);
+                }
+                // Get all descriptions within date range, ordered by newest first
+                $historyRecords = $historyQuery->orderBy(['created_at' => SORT_DESC])->all();
+                $historyDescriptions = [];
+                foreach ($historyRecords as $record) {
+                    $historyDescriptions[] = [
+                        'description' => $record->description,
+                        'created_at' => $record->created_at,
+                        'user' => $record->user ? $record->user->username : 'Unknown'
+                    ];
+                }
+            } else {
+                // No date filters - get only the last description
+                $lastHistory = $historyQuery->orderBy(['created_at' => SORT_DESC])->one();
+                $historyDescriptions = $lastHistory ? [[
+                    'description' => $lastHistory->description,
+                    'created_at' => $lastHistory->created_at,
+                    'user' => $lastHistory->user ? $lastHistory->user->username : 'Unknown'
+                ]] : [];
+            }
             
             // Calculate checklist progress
             $checklistItems = $task->checklistItems;
@@ -657,7 +681,8 @@ class ActivityLogController extends Controller
             }
             
             $taskExtraData[$task->id] = [
-                'lastHistoryDescription' => $lastHistory ? $lastHistory->description : null,
+                'historyDescriptions' => $historyDescriptions,
+                'hasDateFilter' => ($dateFrom || $dateTo),
                 'checklistProgress' => [
                     'total' => $totalItems,
                     'completed' => $completedItems,

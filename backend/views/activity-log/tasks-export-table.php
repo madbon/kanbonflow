@@ -171,6 +171,18 @@ $this->title = 'Tasks Export Table';
             line-height: 18px;
         }
         
+        .history-item {
+            font-size: 0.85rem;
+        }
+        
+        .history-item .history-content {
+            margin-bottom: 0.25rem;
+        }
+        
+        .history-item + .history-item {
+            border-top: 1px solid #e9ecef;
+        }
+        
         .print-button {
             position: fixed;
             top: 20px;
@@ -274,7 +286,7 @@ $this->title = 'Tasks Export Table';
                             <th style="width: 10%;">Task Category</th>
                             <th style="width: 15%;">Task Title</th>
                             <th style="width: 20%;">Task Description</th>
-                            <th style="width: 15%;">Last History Description</th>
+                            <th style="width: 15%;">History Descriptions</th>
                             <th style="width: 12%;">Steps Status</th>
                             <th style="width: 18%;">Last Comment</th>
                             <th style="width: 8%;">Last Updated</th>
@@ -340,34 +352,76 @@ $this->title = 'Tasks Export Table';
                                     <?php endif; ?>
                                 </td>
                                 
-                                <!-- Last History Description Column -->
+                                <!-- History Description(s) Column -->
                                 <td>
                                     <?php 
                                     $extraData = isset($taskExtraData[$task->id]) ? $taskExtraData[$task->id] : null;
-                                    $lastHistoryDesc = $extraData ? $extraData['lastHistoryDescription'] : null;
+                                    $historyDescriptions = $extraData ? $extraData['historyDescriptions'] : [];
+                                    $hasDateFilter = $extraData ? $extraData['hasDateFilter'] : false;
                                     ?>
-                                    <?php if ($lastHistoryDesc): ?>
-                                        <div class="task-description">
-                                            <?php 
-                                            $historyDesc = Html::encode($lastHistoryDesc);
-                                            // Convert URLs to clickable links
-                                            $historyDesc = preg_replace(
-                                                '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
-                                                '<a href="$1" target="_blank">$1</a>',
-                                                $historyDesc
-                                            );
-                                            // Limit description length for display
-                                            if (strlen($historyDesc) > 120) {
-                                                echo substr(nl2br($historyDesc), 0, 120) . '...';
-                                            } else {
-                                                echo nl2br($historyDesc);
-                                            }
-                                            ?>
-                                        </div>
+                                    <?php if (!empty($historyDescriptions)): ?>
+                                        <?php if ($hasDateFilter && count($historyDescriptions) > 1): ?>
+                                            <!-- Multiple descriptions within date range -->
+                                            <div class="task-description">
+                                                <small class="text-info mb-2 d-block">
+                                                    <i class="fa fa-calendar"></i> <?= count($historyDescriptions) ?> descriptions in date range
+                                                </small>
+                                                <?php foreach ($historyDescriptions as $index => $historyItem): ?>
+                                                    <div class="history-item <?= $index > 0 ? 'mt-2 pt-2 border-top' : '' ?>">
+                                                        <div class="history-content">
+                                                            <?php 
+                                                            $historyDesc = Html::encode($historyItem['description']);
+                                                            // Convert URLs to clickable links
+                                                            $historyDesc = preg_replace(
+                                                                '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
+                                                                '<a href="$1" target="_blank">$1</a>',
+                                                                $historyDesc
+                                                            );
+                                                            // Limit description length for display
+                                                            if (strlen($historyDesc) > 100) {
+                                                                echo substr(nl2br($historyDesc), 0, 100) . '...';
+                                                            } else {
+                                                                echo nl2br($historyDesc);
+                                                            }
+                                                            ?>
+                                                        </div>
+                                                        <small class="text-muted">
+                                                            <i class="fa fa-user"></i> <?= $historyItem['user'] ?> 
+                                                            <i class="fa fa-clock ml-1"></i> <?= date('M j, Y g:i A', $historyItem['created_at']) ?>
+                                                        </small>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <!-- Single description (last one) -->
+                                            <div class="task-description">
+                                                <div class="history-content">
+                                                    <?php 
+                                                    $historyDesc = Html::encode($historyDescriptions[0]['description']);
+                                                    // Convert URLs to clickable links
+                                                    $historyDesc = preg_replace(
+                                                        '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
+                                                        '<a href="$1" target="_blank">$1</a>',
+                                                        $historyDesc
+                                                    );
+                                                    // Limit description length for display
+                                                    if (strlen($historyDesc) > 120) {
+                                                        echo substr(nl2br($historyDesc), 0, 120) . '...';
+                                                    } else {
+                                                        echo nl2br($historyDesc);
+                                                    }
+                                                    ?>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fa fa-user"></i> <?= $historyDescriptions[0]['user'] ?> 
+                                                    <i class="fa fa-clock ml-1"></i> <?= date('M j, Y g:i A', $historyDescriptions[0]['created_at']) ?>
+                                                </small>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <div class="text-muted text-center">
                                             <i class="fa fa-history"></i><br>
-                                            <small>No history</small>
+                                            <small><?= $hasDateFilter ? 'No history in date range' : 'No history' ?></small>
                                         </div>
                                     <?php endif; ?>
                                 </td>

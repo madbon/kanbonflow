@@ -59,6 +59,23 @@ $this->registerCss("
         white-space: normal;
         max-width: 350px;
     }
+    .description-cell {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+        line-height: 1.4;
+    }
+    .task-url {
+        color: #007bff;
+        text-decoration: none;
+        word-break: break-all;
+        display: inline;
+    }
+    .task-url:hover {
+        color: #0056b3;
+        text-decoration: underline;
+    }
     .modal-url {
         color: #007bff;
         text-decoration: none;
@@ -339,7 +356,17 @@ $this->registerJs("
                     [
                         'attribute' => 'description',
                         'label' => 'Description',
-                        'format' => 'text',
+                        'format' => 'raw',
+                        'value' => function ($model) {
+                            $description = Html::encode($model->description);
+                            // Convert URLs to clickable links
+                            $description = preg_replace(
+                                '/(https?:\/\/[^\s<>"\'{}|\\\^\[\]`]+)/i',
+                                '<a href="$1" target="_blank" rel="noopener noreferrer" class="task-url">$1</a>',
+                                $description
+                            );
+                            return '<div class="description-cell">' . nl2br($description) . '</div>';
+                        },
                         'headerOptions' => ['style' => 'width: 350px;'],
                     ],
                     [

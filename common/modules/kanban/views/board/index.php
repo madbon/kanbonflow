@@ -529,6 +529,20 @@ $this->registerCss('
         box-shadow: 0 2px 12px rgba(0,0,0,0.2);
     }
 
+    /* Task Target Dates Styling */
+    .task-target-dates {
+        font-size: 11px;
+        color: #17a2b8;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .task-target-dates i {
+        opacity: 0.8;
+    }
+
     /* Completion Tasks Modal Styles */
     .completion-tasks-container {
         display: flex;
@@ -1251,8 +1265,60 @@ uasort($allStatistics, function($a, $b) {
                                 <div class="task-footer">
                                     <div class="task-deadline <?= $task->isOverdue() ? 'overdue' : '' ?>">
                                         <i class="fa fa-clock-o"></i>
-                                        <?= date('M j, Y', $task->deadline) ?>
+                                        <?php
+                                        $now = time();
+                                        $secondsUntilDeadline = $task->deadline - $now;
+                                        
+                                        if ($secondsUntilDeadline < 0) {
+                                            // Deadline has passed, show actual date
+                                            echo date('M j, Y g:i A', $task->deadline);
+                                        } else {
+                                            // Calculate time components
+                                            $days = floor($secondsUntilDeadline / 86400);
+                                            $hours = floor(($secondsUntilDeadline % 86400) / 3600);
+                                            $minutes = floor(($secondsUntilDeadline % 3600) / 60);
+                                            
+                                            $timeParts = [];
+                                            
+                                            if ($days > 0) {
+                                                $timeParts[] = $days . ' day' . ($days > 1 ? 's' : '');
+                                            }
+                                            if ($hours > 0) {
+                                                $timeParts[] = $hours . ' hour' . ($hours > 1 ? 's' : '');
+                                            }
+                                            if ($minutes > 0 && $days == 0) { // Only show minutes if no days
+                                                $timeParts[] = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                                            }
+                                            
+                                            if (empty($timeParts)) {
+                                                echo 'Due now';
+                                            } else {
+                                                echo implode(', ', $timeParts) . ' before deadline';
+                                            }
+                                        }
+                                        ?>
                                     </div>
+                                    
+                                    <?php if ($task->target_start_date && $task->target_end_date): ?>
+                                        <div class="task-target-dates">
+                                            <i class="fa fa-bullseye"></i>
+                                            <?php
+                                            $targetStartDate = date('M j', $task->target_start_date);
+                                            $targetEndDate = date('M j', $task->target_end_date);
+                                            echo $targetStartDate . ' - ' . $targetEndDate;
+                                            ?>
+                                        </div>
+                                    <?php elseif ($task->target_start_date): ?>
+                                        <div class="task-target-dates">
+                                            <i class="fa fa-bullseye"></i>
+                                            From <?= date('M j', $task->target_start_date) ?>
+                                        </div>
+                                    <?php elseif ($task->target_end_date): ?>
+                                        <div class="task-target-dates">
+                                            <i class="fa fa-bullseye"></i>
+                                            Until <?= date('M j', $task->target_end_date) ?>
+                                        </div>
+                                    <?php endif; ?>
                                     
                                     <?php if ($task->assigned_to): ?>
                                         <div class="task-assignee">

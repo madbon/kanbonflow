@@ -21,6 +21,8 @@ var KanbanBoard = {
         console.log('Kanban config initialized:', this.config);
         this.bindEvents();
         this.initDragAndDrop();
+        this.loadTags();
+        this.loadParentTasks();
     },
 
     bindEvents: function() {
@@ -88,6 +90,13 @@ var KanbanBoard = {
 
         $('#updateTaskBtn').on('click', function() {
             self.updateTask();
+        });
+        
+        // Handle parent task link clicks
+        $(document).on('click', '.parent-task-link', function(e) {
+            e.preventDefault();
+            var parentId = $(this).data('parent-id');
+            self.focusOnTask(parentId);
         });
     },
 
@@ -309,6 +318,13 @@ var KanbanBoard = {
         }
         $('#editTaskIncludeInExport').val(exportValue);
         
+        // Set selected tags
+        this.setSelectedTags(task.tag_ids);
+        
+        // Load parent tasks and set selected parent
+        this.loadParentTasksForEdit(task.id);
+        this.setSelectedParentTask(task.parent_task_id);
+        
         // Show modal
         $('#editTaskModal').modal('show');
     },
@@ -488,6 +504,178 @@ var KanbanBoard = {
                 self.showNotification('Error deleting column', 'error');
             }
         });
+    },
+
+    /**
+     * Load available tags for task forms
+     */
+    loadTags: function() {
+        var self = this;
+        
+        if (!this.config.getTagsUrl) {
+            console.warn('getTagsUrl not configured');
+            return;
+        }
+        
+        $.ajax({
+            url: this.config.getTagsUrl,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    self.populateTagSelects(response.tags);
+                } else {
+                    console.error('Failed to load tags:', response.message);
+                }
+            },
+            error: function() {
+                console.error('Error loading tags');
+            }
+        });
+    },
+
+    /**
+     * Populate tag select elements with options
+     */
+    populateTagSelects: function(tags) {
+        var tagOptions = '';
+        
+        $.each(tags, function(index, tag) {
+            tagOptions += '<option value="' + tag.id + '" data-color="' + tag.color + '">' 
+                        + $('<div>').text(tag.name).html() + '</option>';
+        });
+        
+        // Populate both add and edit task tag selects
+        $('#taskTags, #editTaskTags').html(tagOptions);
+        
+        // Store tags for later use
+        this.availableTags = tags;
+    },
+
+    /**
+     * Set selected tags in edit modal
+     */
+    setSelectedTags: function(tagIds) {
+        $('#editTaskTags option').prop('selected', false);
+        
+        if (tagIds && tagIds.length > 0) {
+            $.each(tagIds, function(index, tagId) {
+                $('#editTaskTags option[value="' + tagId + '"]').prop('selected', true);
+            });
+        }
+    },
+
+    /**
+     * Load available parent tasks for task forms
+     */
+    loadParentTasks: function() {
+        var self = this;
+        
+        if (!this.config.getParentTasksUrl) {
+            console.warn('getParentTasksUrl not configured');
+            return;
+        }
+        
+        $.ajax({
+            url: this.config.getParentTasksUrl,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    self.populateParentTaskSelects(response.tasks);
+                } else {
+                    console.error('Failed to load parent tasks:', response.message);
+                }
+            },
+            error: function() {
+                console.error('Error loading parent tasks');
+            }
+        });
+    },
+
+    /**
+     * Populate parent task select elements with options
+     */
+    populateParentTaskSelects: function(tasks) {
+        var taskOptions = '<option value="">No Parent (Root Task)</option>';
+        
+        $.each(tasks, function(index, task) {
+            taskOptions += '<option value="' + task.id + '" data-depth="' + task.depth + '">' 
+                        + $('<div>').text(task.title).html() + '</option>';
+        });
+        
+        // Populate both add and edit task parent selects
+        $('#taskParent, #editTaskParent').html(taskOptions);
+        
+        // Store tasks for later use
+        this.availableParentTasks = tasks;
+    },
+
+    /**
+     * Load parent tasks for edit modal (excluding current task and its descendants)
+     */
+    loadParentTasksForEdit: function(currentTaskId) {
+        var self = this;
+        
+        if (!this.config.getParentTasksUrl) {
+            console.warn('getParentTasksUrl not configured');
+            return;
+        }
+        
+        $.ajax({
+            url: this.config.getParentTasksUrl + '?exclude_task_id=' + currentTaskId,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    var taskOptions = '<option value="">No Parent (Root Task)</option>';
+                    
+                    $.each(response.tasks, function(index, task) {
+                        taskOptions += '<option value="' + task.id + '" data-depth="' + task.depth + '">' 
+                                    + $('<div>').text(task.title).html() + '</option>';
+                    });
+                    
+                    $('#editTaskParent').html(taskOptions);
+                } else {
+                    console.error('Failed to load parent tasks for edit:', response.message);
+                }
+            },
+            error: function() {
+                console.error('Error loading parent tasks for edit');
+            }
+        });
+    },
+
+    /**
+     * Set selected parent task in edit modal
+     */
+    setSelectedParentTask: function(parentTaskId) {
+        $('#editTaskParent').val(parentTaskId || '');
+    },
+
+    /**
+     * Focus on a specific task by highlighting and scrolling to it
+     */
+    focusOnTask: function(taskId) {
+        // Remove existing focus from all tasks
+        $('.kanban-task').removeClass('task-focused');
+        
+        // Find and focus the target task
+        var targetTask = $('.kanban-task[data-task-id="' + taskId + '"]');
+        if (targetTask.length > 0) {
+            // Add focus class
+            targetTask.addClass('task-focused');
+            
+            // Scroll to the task
+            $('html, body').animate({
+                scrollTop: targetTask.offset().top - 100
+            }, 500);
+            
+            // Remove focus after 3 seconds
+            setTimeout(function() {
+                targetTask.removeClass('task-focused');
+            }, 3000);
+        }
     }
 };
 

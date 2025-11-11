@@ -24,9 +24,14 @@ use common\modules\taskmonitor\behaviors\TaskHistoryBehavior;
  * @property int $updated_at
  * @property int $position
  * @property boolean $include_in_export
+ * @property int $parent_task_id
  *
  * @property TaskCategory $category
+ * @property Task $parentTask
+ * @property Task[] $childTasks
  * @property TaskImage[] $images
+ * @property TaskTag[] $taskTags
+ * @property Tag[] $tags
  */
 class Task extends \yii\db\ActiveRecord
 {
@@ -77,9 +82,10 @@ class Task extends \yii\db\ActiveRecord
     {
         return [
             [['category_id', 'title', 'deadline'], 'required'],
-            [['category_id', 'deadline', 'completed_at', 'assigned_to', 'created_by', 'created_at', 'updated_at', 'position'], 'integer'],
+            [['category_id', 'deadline', 'completed_at', 'assigned_to', 'created_by', 'created_at', 'updated_at', 'position', 'parent_task_id'], 'integer'],
             [['include_in_export'], 'boolean'],
             [['include_in_export'], 'default', 'value' => 1],
+            [['parent_task_id'], 'validateParentTask'],
             [['description'], 'string'],
             [['title'], 'string', 'max' => 255],
             [['priority'], 'string', 'max' => 20],
@@ -110,6 +116,7 @@ class Task extends \yii\db\ActiveRecord
             'updated_at' => 'Updated At',
             'position' => 'Position',
             'include_in_export' => 'Include in Activity Log Export',
+            'parent_task_id' => 'Parent Task',
         ];
     }
 
@@ -131,6 +138,28 @@ class Task extends \yii\db\ActiveRecord
     public function getImages()
     {
         return $this->hasMany(TaskImage::className(), ['task_id' => 'id'])->orderBy(['sort_order' => SORT_ASC]);
+    }
+
+    /**
+     * Gets query for [[TaskTags]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getTaskTags()
+    {
+        return $this->hasMany(TaskTag::class, ['task_id' => 'id']);
+    }
+
+    /**
+     * Gets query for [[Tags]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getTags()
+    {
+        return $this->hasMany(Tag::class, ['id' => 'tag_id'])
+            ->viaTable('task_tags', ['task_id' => 'id'])
+            ->orderBy('name ASC');
     }
 
     /**
@@ -204,6 +233,127 @@ class Task extends \yii\db\ActiveRecord
     public function getCreatedBy()
     {
         return $this->hasOne(\common\models\User::className(), ['id' => 'created_by']);
+    }
+
+    /**
+     * Gets query for [[ParentTask]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getParentTask()
+    {
+        return $this->hasOne(self::class, ['id' => 'parent_task_id']);
+    }
+
+    /**
+     * Gets query for [[ChildTasks]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getChildTasks()
+    {
+        return $this->hasMany(self::class, ['parent_task_id' => 'id'])
+                    ->orderBy('position ASC, created_at ASC');
+    }
+
+    /**
+     * Check if this task is a parent task (has children)
+     * @return bool
+     */
+    public function isParent()
+    {
+        return $this->getChildTasks()->count() > 0;
+    }
+
+    /**
+     * Check if this task is a child task (has parent)
+     * @return bool
+     */
+    public function isChild()
+    {
+        return $this->parent_task_id !== null;
+    }
+
+    /**
+     * Get all ancestor tasks (parents, grandparents, etc.)
+     * @return Task[]
+     */
+    public function getAncestors()
+    {
+        $ancestors = [];
+        $current = $this->parentTask;
+        
+        while ($current !== null) {
+            $ancestors[] = $current;
+            $current = $current->parentTask;
+        }
+        
+        return array_reverse($ancestors); // Return from root to immediate parent
+    }
+
+    /**
+     * Get all descendant tasks (children, grandchildren, etc.)
+     * @return Task[]
+     */
+    public function getDescendants()
+    {
+        $descendants = [];
+        
+        foreach ($this->childTasks as $child) {
+            $descendants[] = $child;
+            $descendants = array_merge($descendants, $child->getDescendants());
+        }
+        
+        return $descendants;
+    }
+
+    /**
+     * Get depth level in hierarchy (0 = root task)
+     * @return int
+     */
+    public function getDepthLevel()
+    {
+        $level = 0;
+        $current = $this->parentTask;
+        
+        while ($current !== null) {
+            $level++;
+            $current = $current->parentTask;
+        }
+        
+        return $level;
+    }
+
+    /**
+     * Validate parent task to prevent circular dependencies
+     */
+    public function validateParentTask($attribute, $params)
+    {
+        if (!empty($this->$attribute)) {
+            // Cannot be parent of itself
+            if ($this->$attribute == $this->id) {
+                $this->addError($attribute, 'A task cannot be its own parent.');
+                return;
+            }
+            
+            // Check if parent task exists
+            $parentTask = self::findOne($this->$attribute);
+            if (!$parentTask) {
+                $this->addError($attribute, 'The selected parent task does not exist.');
+                return;
+            }
+            
+            // Prevent circular dependency - check if the potential parent is already a descendant
+            if (!$this->isNewRecord) {
+                $descendants = $this->getDescendants();
+                foreach ($descendants as $descendant) {
+                    if ($descendant->id == $this->$attribute) {
+                        $this->addError($attribute, 'Cannot create circular dependency. The selected task is already a child of this task.');
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -329,5 +479,69 @@ class Task extends \yii\db\ActiveRecord
         
         // Use parent implementation for other attributes
         return parent::isEmpty($attribute);
+    }
+
+    /**
+     * Get tag names as comma-separated string
+     * @return string
+     */
+    public function getTagNames()
+    {
+        $names = [];
+        foreach ($this->tags as $tag) {
+            $names[] = $tag->name;
+        }
+        return implode(', ', $names);
+    }
+
+    /**
+     * Get tags as HTML badges
+     * @return string
+     */
+    public function getTagBadges()
+    {
+        $badges = [];
+        foreach ($this->tags as $tag) {
+            $badges[] = $tag->getBadgeHtml();
+        }
+        return implode(' ', $badges);
+    }
+
+    /**
+     * Assign tags to this task
+     * @param array $tagIds Array of tag IDs
+     * @return bool
+     */
+    public function assignTags($tagIds)
+    {
+        if (!is_array($tagIds)) {
+            return false;
+        }
+
+        // Remove existing tags
+        TaskTag::deleteAll(['task_id' => $this->id]);
+
+        // Add new tags
+        foreach ($tagIds as $tagId) {
+            if (!empty($tagId)) {
+                $taskTag = new TaskTag();
+                $taskTag->task_id = $this->id;
+                $taskTag->tag_id = $tagId;
+                if (!$taskTag->save()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get assigned tag IDs
+     * @return array
+     */
+    public function getTagIds()
+    {
+        return $this->getTaskTags()->select('tag_id')->column();
     }
 }

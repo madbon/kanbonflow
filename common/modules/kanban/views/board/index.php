@@ -254,6 +254,95 @@ $this->registerCss('
         overflow-wrap: break-word;
     }
     
+    /* Task Tags Styling */
+    .task-tags {
+        padding: 8px 0;
+        margin-bottom: 8px;
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    
+    .tag-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        margin: 2px 4px 2px 0;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        color: white;
+        text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        line-height: 1.2;
+    }
+    
+    /* Task tag select styling */
+    #taskTags, #editTaskTags {
+        resize: vertical;
+    }
+    
+    #taskTags option, #editTaskTags option {
+        padding: 4px 8px;
+    }
+    
+    /* Task hierarchy styling */
+    .task-hierarchy {
+        margin: 8px 0;
+        font-size: 11px;
+        line-height: 1.3;
+    }
+    
+    .hierarchy-parent {
+        color: #6c757d;
+        margin-bottom: 3px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .hierarchy-parent i {
+        margin-right: 5px;
+        font-size: 12px;
+    }
+    
+    .parent-task-link {
+        cursor: pointer;
+        text-decoration: none;
+        color: #495057;
+        font-weight: 500;
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .parent-task-link:hover {
+        color: #007bff;
+        text-decoration: underline;
+    }
+    
+    .hierarchy-children {
+        color: #28a745;
+        display: flex;
+        align-items: center;
+        font-weight: 500;
+    }
+    
+    .hierarchy-children i {
+        margin-right: 5px;
+        font-size: 12px;
+    }
+    
+    .children-count {
+        color: #495057;
+    }
+    
+    /* Task focus effect */
+    .task-focused {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3) !important;
+        border: 2px solid #007bff !important;
+        transition: all 0.3s ease;
+        z-index: 10;
+        position: relative;
+    }
+    
     .kanban-modal-url:hover {
         color: #0056b3;
         text-decoration: underline;
@@ -1031,6 +1120,37 @@ uasort($allStatistics, function($a, $b) {
                                         <p class="task-description"><?= $shortDescription ?></p>
                                     <?php endif; ?>
                                 </div>
+
+                                <!-- Task Hierarchy Indicators -->
+                                <?php if ($task->isChild() || $task->isParent()): ?>
+                                    <div class="task-hierarchy">
+                                        <?php if ($task->isChild()): ?>
+                                            <div class="hierarchy-parent">
+                                                <i class="fa fa-level-up" style="color: #6c757d;"></i>
+                                                <span class="parent-task-link" data-parent-id="<?= $task->parent_task_id ?>">
+                                                    <?= Html::encode($task->parentTask->title) ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($task->isParent()): ?>
+                                            <div class="hierarchy-children">
+                                                <i class="fa fa-level-down" style="color: #28a745;"></i>
+                                                <span class="children-count">
+                                                    <?= count($task->childTasks) ?> subtask<?= count($task->childTasks) > 1 ? 's' : '' ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if ($task->tags): ?>
+                                    <div class="task-tags">
+                                        <?php foreach ($task->tags as $tag): ?>
+                                            <?= $tag->getBadgeHtml() ?>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                                 
                                 <div class="task-footer">
                                     <div class="task-deadline <?= $task->isOverdue() ? 'overdue' : '' ?>">
@@ -1130,6 +1250,27 @@ uasort($allStatistics, function($a, $b) {
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label for="taskTags">Tags</label>
+                        <select class="form-control" id="taskTags" name="tag_ids" multiple style="height: 120px;">
+                            <!-- Tags will be loaded dynamically -->
+                        </select>
+                        <small class="form-text text-muted">
+                            Hold Ctrl/Cmd to select multiple tags. Tags help organize and categorize related tasks.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="taskParent">Parent Task</label>
+                        <select class="form-control" id="taskParent" name="parent_task_id">
+                            <option value="">No Parent (Root Task)</option>
+                            <!-- Parent tasks will be loaded dynamically -->
+                        </select>
+                        <small class="form-text text-muted">
+                            Select a parent task to create a sub-task. Leave empty to create a root-level task.
+                        </small>
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -1218,6 +1359,27 @@ uasort($allStatistics, function($a, $b) {
                                 </select>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editTaskTags">Tags</label>
+                        <select class="form-control" id="editTaskTags" name="tag_ids" multiple style="height: 120px;">
+                            <!-- Tags will be loaded dynamically -->
+                        </select>
+                        <small class="form-text text-muted">
+                            Hold Ctrl/Cmd to select multiple tags. Tags help organize and categorize related tasks.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editTaskParent">Parent Task</label>
+                        <select class="form-control" id="editTaskParent" name="parent_task_id">
+                            <option value="">No Parent (Root Task)</option>
+                            <!-- Parent tasks will be loaded dynamically -->
+                        </select>
+                        <small class="form-text text-muted">
+                            Select a parent task to create a sub-task. Leave empty to create a root-level task.
+                        </small>
                     </div>
                     
                     <div class="row">
@@ -1511,6 +1673,8 @@ $this->registerJs("
             getTaskHistoryUrl: '" . Url::to(['get-task-history']) . "',
             editTaskUrl: '" . Url::to(['edit-task']) . "',
             deleteTaskUrl: '" . Url::to(['delete-task']) . "',
+            getTagsUrl: '" . Url::to(['get-tags']) . "',
+            getParentTasksUrl: '" . Url::to(['get-parent-tasks']) . "',
             getCommentsUrl: '" . Url::to(['/taskmonitor/comment/get-comments']) . "',
             addCommentUrl: '" . Url::to(['/taskmonitor/comment/add']) . "',
             editCommentUrl: '" . Url::to(['/taskmonitor/comment/edit']) . "',

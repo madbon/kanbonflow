@@ -10,6 +10,7 @@ use yii\filters\AccessControl;
 use common\modules\taskmonitor\models\Task;
 use common\modules\taskmonitor\models\TaskCategory;
 use common\modules\taskmonitor\models\TaskHistory;
+use common\modules\taskmonitor\models\Tag;
 use common\modules\kanban\models\KanbanBoard;
 use common\modules\kanban\models\KanbanColumn;
 use Exception;
@@ -25,7 +26,7 @@ class BoardController extends Controller
     public function beforeAction($action)
     {
         // Disable CSRF validation for AJAX endpoints
-        if (in_array($action->id, ['get-category-completion-tasks', 'get-completion-tasks', 'get-deadline-tasks'])) {
+        if (in_array($action->id, ['get-category-completion-tasks', 'get-completion-tasks', 'get-deadline-tasks', 'get-tags', 'get-parent-tasks'])) {
             $this->enableCsrfValidation = false;
         }
         
@@ -43,7 +44,7 @@ class BoardController extends Controller
                 'rules' => [
                     [
                         'allow' => true,
-                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks'],
+                        'actions' => ['index', 'update-task-status', 'update-task-position', 'update-column-position', 'add-column', 'edit-column', 'delete-column', 'add-task', 'get-task', 'edit-task', 'delete-task', 'get-task-details', 'get-task-history', 'get-deadline-tasks', 'get-completion-tasks', 'get-category-completion-tasks', 'get-tags', 'get-parent-tasks'],
                         'roles' => ['@'],
                     ],
                 ],
@@ -61,6 +62,7 @@ class BoardController extends Controller
                     'delete-task' => ['POST'],
                     'get-task' => ['GET'],
                     'get-task-details' => ['GET'],
+                    'get-tags' => ['GET'],
                     'get-deadline-tasks' => ['GET'],
                     'get-completion-tasks' => ['GET', 'POST'],
                     'get-category-completion-tasks' => ['GET', 'POST'],
@@ -392,6 +394,8 @@ class BoardController extends Controller
         $deadline = Yii::$app->request->post('deadline');
         $status = Yii::$app->request->post('status', 'pending'); // Default to pending
         $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 (Yes)
+        $tagIds = Yii::$app->request->post('tag_ids', []); // Array of tag IDs
+        $parentTaskId = Yii::$app->request->post('parent_task_id'); // Parent task ID for hierarchies
         
         if (empty($title)) {
             return ['success' => false, 'message' => 'Task title is required'];
@@ -409,6 +413,7 @@ class BoardController extends Controller
         $task->status = $status;
         $task->deadline = $deadline ? strtotime($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
+        $task->parent_task_id = !empty($parentTaskId) ? $parentTaskId : null;
         
         // Set position to be at the end of the column
         $maxPosition = Task::find()
@@ -417,6 +422,11 @@ class BoardController extends Controller
         $task->position = $maxPosition !== null ? $maxPosition + 1 : 0;
         
         if ($task->save()) {
+            // Assign tags to the task
+            if (!empty($tagIds)) {
+                $task->assignTags($tagIds);
+            }
+            
             return [
                 'success' => true,
                 'message' => 'Task added successfully',
@@ -428,6 +438,7 @@ class BoardController extends Controller
                     'priority' => $task->priority,
                     'category_name' => $task->category ? $task->category->name : 'No Category',
                     'deadline' => date('Y-m-d H:i', $task->deadline),
+                    'tags' => $task->getTagNames(),
                 ]
             ];
         } else {
@@ -462,6 +473,8 @@ class BoardController extends Controller
                 'deadline' => $task->deadline ? date('Y-m-d\TH:i', $task->deadline) : '',
                 'assigned_to' => $task->assigned_to,
                 'include_in_export' => $task->include_in_export,
+                'tag_ids' => $task->getTagIds(),
+                'parent_task_id' => $task->parent_task_id,
             ]
         ];
     }
@@ -483,6 +496,8 @@ class BoardController extends Controller
         $deadline = Yii::$app->request->post('deadline');
         $assignedTo = Yii::$app->request->post('assigned_to');
         $includeInExport = Yii::$app->request->post('include_in_export', 1); // Default to 1 if not provided
+        $tagIds = Yii::$app->request->post('tag_ids', []); // Array of tag IDs
+        $parentTaskId = Yii::$app->request->post('parent_task_id'); // Parent task ID for hierarchies
         
         $task = Task::findOne($id);
         if (!$task) {
@@ -509,6 +524,7 @@ class BoardController extends Controller
         $task->status = $status;
         $task->assigned_to = $assignedTo;
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
+        $task->parent_task_id = !empty($parentTaskId) ? $parentTaskId : null;
         
         if ($deadline) {
             $task->deadline = strtotime($deadline);
@@ -518,6 +534,9 @@ class BoardController extends Controller
         \Yii::info("Task {$id} status update: '{$originalStatus}' -> '{$status}'", 'kanban');
 
         if ($task->save()) {
+            // Update task tags
+            $task->assignTags($tagIds);
+            
             return [
                 'success' => true,
                 'message' => 'Task updated successfully',
@@ -530,10 +549,96 @@ class BoardController extends Controller
                     'status' => $task->status,
                     'deadline' => $task->deadline ? date('Y-m-d\TH:i', $task->deadline) : '',
                     'assigned_to' => $task->assigned_to,
+                    'tags' => $task->getTagNames(),
                 ]
             ];
         } else {
             return ['success' => false, 'message' => 'Failed to update task', 'errors' => $task->errors];
+        }
+    }
+
+    /**
+     * Get available tags for task forms
+     * @return array
+     */
+    public function actionGetTags()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        try {
+            $tags = Tag::getTagOptions();
+            
+            return [
+                'success' => true,
+                'tags' => $tags
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to get tags: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get available parent tasks for task forms
+     * @return array
+     */
+    public function actionGetParentTasks()
+    {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        try {
+            $currentTaskId = Yii::$app->request->get('exclude_task_id');
+            
+            // Get all tasks except the current one (to prevent circular dependencies)
+            $query = Task::find()
+                ->select(['id', 'title', 'status', 'parent_task_id'])
+                ->orderBy('title ASC');
+                
+            if ($currentTaskId) {
+                $query->andWhere(['!=', 'id', $currentTaskId]);
+            }
+            
+            $tasks = $query->all();
+            
+            // Format for dropdown with status indication
+            $parentOptions = [];
+            foreach ($tasks as $task) {
+                $statusLabel = '';
+                switch ($task->status) {
+                    case 'pending':
+                        $statusLabel = ' 📋';
+                        break;
+                    case 'in_progress':
+                        $statusLabel = ' ⚙️';
+                        break;
+                    case 'completed':
+                        $statusLabel = ' ✅';
+                        break;
+                    default:
+                        $statusLabel = '';
+                }
+                
+                $indent = str_repeat('  ', $task->getDepthLevel());
+                $parentOptions[] = [
+                    'id' => $task->id,
+                    'title' => $indent . $task->title . $statusLabel,
+                    'depth' => $task->getDepthLevel(),
+                    'status' => $task->status,
+                    'parent_id' => $task->parent_task_id
+                ];
+            }
+            
+            return [
+                'success' => true,
+                'tasks' => $parentOptions
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to get parent tasks: ' . $e->getMessage()
+            ];
         }
     }
 

@@ -1267,34 +1267,43 @@ uasort($allStatistics, function($a, $b) {
                                         <i class="fa fa-clock-o"></i>
                                         <?php
                                         $now = time();
-                                        $secondsUntilDeadline = $task->deadline - $now;
-                                        
-                                        if ($secondsUntilDeadline < 0) {
-                                            // Deadline has passed, show actual date
-                                            echo date('M j, Y g:i A', $task->deadline);
-                                        } else {
-                                            // Calculate time components
-                                            $days = floor($secondsUntilDeadline / 86400);
-                                            $hours = floor(($secondsUntilDeadline % 86400) / 3600);
-                                            $minutes = floor(($secondsUntilDeadline % 3600) / 60);
-                                            
-                                            $timeParts = [];
-                                            
-                                            if ($days > 0) {
-                                                $timeParts[] = $days . ' day' . ($days > 1 ? 's' : '');
-                                            }
-                                            if ($hours > 0) {
-                                                $timeParts[] = $hours . ' hour' . ($hours > 1 ? 's' : '');
-                                            }
-                                            if ($minutes > 0 && $days == 0) { // Only show minutes if no days
-                                                $timeParts[] = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
-                                            }
-                                            
-                                            if (empty($timeParts)) {
-                                                echo 'Due now';
+                                        // Use Philippines timezone for consistent time display
+                                        try {
+                                            $philippinesTz = new \DateTimeZone('Asia/Manila');
+                                            $nowDt = new \DateTime('now', $philippinesTz);
+                                            $deadlineDt = (new \DateTime('@' . (int)$task->deadline))->setTimezone($philippinesTz);
+
+                                            if ($deadlineDt < $nowDt) {
+                                                // Deadline has passed, show actual date/time
+                                                echo $deadlineDt->format('M j, Y g:i A');
                                             } else {
-                                                echo implode(', ', $timeParts) . ' before deadline';
+                                                $diff = $nowDt->diff($deadlineDt);
+                                                // %a gives total days
+                                                $days = (int)$diff->format('%a');
+                                                $hours = (int)$diff->format('%h');
+                                                $minutes = (int)$diff->format('%i');
+
+                                                $timeParts = [];
+                                                if ($days > 0) {
+                                                    $timeParts[] = $days . ' day' . ($days > 1 ? 's' : '');
+                                                }
+                                                if ($hours > 0) {
+                                                    $timeParts[] = $hours . ' hour' . ($hours > 1 ? 's' : '');
+                                                }
+                                                // Show minutes only when less than a day for clarity
+                                                if ($minutes > 0 && $days == 0) {
+                                                    $timeParts[] = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                                                }
+
+                                                if (empty($timeParts)) {
+                                                    echo 'Due now';
+                                                } else {
+                                                    echo implode(', ', $timeParts) . ' before deadline';
+                                                }
                                             }
+                                        } catch (\Exception $e) {
+                                            // Fallback: show raw timestamp formatted if something fails
+                                            echo date('M j, Y g:i A', $task->deadline);
                                         }
                                         ?>
                                     </div>

@@ -14,12 +14,75 @@ use common\modules\taskmonitor\models\TaskChecklist;
 use common\modules\kanban\models\KanbanBoard;
 use common\modules\kanban\models\KanbanColumn;
 use Exception;
+use DateTime;
+use DateTimeZone;
 
 /**
  * Board controller for the kanban module
  */
 class BoardController extends Controller
 {
+    /**
+     * Convert datetime-local input to UTC timestamp for Philippines timezone
+     * @param string $datetimeLocal DateTime string from datetime-local input (format: Y-m-d\TH:i)
+     * @return int|null UTC timestamp or null if invalid
+     */
+    private function convertPhilippinesDatetimeToUtc($datetimeLocal)
+    {
+        if (empty($datetimeLocal)) {
+            return null;
+        }
+        
+        try {
+            // Philippines timezone
+            $philippinesTz = new DateTimeZone('Asia/Manila');
+            
+            // Parse the datetime-local string as Philippines time
+            $dt = DateTime::createFromFormat('Y-m-d\TH:i', $datetimeLocal, $philippinesTz);
+            
+            if (!$dt) {
+                // Try alternative format with seconds
+                $dt = DateTime::createFromFormat('Y-m-d\TH:i:s', $datetimeLocal, $philippinesTz);
+            }
+            
+            if (!$dt) {
+                return null;
+            }
+            
+            // Return UTC timestamp
+            return $dt->getTimestamp();
+        } catch (Exception $e) {
+            Yii::error("Error converting datetime: " . $e->getMessage(), 'kanban');
+            return null;
+        }
+    }
+
+    /**
+     * Convert UTC timestamp to Philippines datetime-local format
+     * @param int $utcTimestamp UTC timestamp
+     * @param string $format Format string (default: Y-m-d\TH:i for datetime-local)
+     * @return string|null Formatted datetime in Philippines timezone or null if invalid
+     */
+    private function convertUtcToPhilippinesDatetime($utcTimestamp, $format = 'Y-m-d\TH:i')
+    {
+        if (empty($utcTimestamp)) {
+            return null;
+        }
+        
+        try {
+            // Philippines timezone
+            $philippinesTz = new DateTimeZone('Asia/Manila');
+            
+            // Create DateTime from UTC timestamp and convert to Philippines time
+            $dt = (new DateTime('@' . (int)$utcTimestamp))->setTimezone($philippinesTz);
+            
+            return $dt->format($format);
+        } catch (Exception $e) {
+            Yii::error("Error converting UTC timestamp: " . $e->getMessage(), 'kanban');
+            return null;
+        }
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -417,10 +480,10 @@ class BoardController extends Controller
         $task->category_id = $categoryId;
         $task->priority = $priority ?: Task::PRIORITY_MEDIUM;
         $task->status = $status;
-        $task->deadline = $deadline ? strtotime($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
+        $task->deadline = $deadline ? $this->convertPhilippinesDatetimeToUtc($deadline) : (time() + 7 * 24 * 60 * 60); // Default 7 days from now
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
-        $task->target_start_date = $targetStartDate ? strtotime($targetStartDate) : null;
-        $task->target_end_date = $targetEndDate ? strtotime($targetEndDate) : null;
+        $task->target_start_date = $this->convertPhilippinesDatetimeToUtc($targetStartDate);
+        $task->target_end_date = $this->convertPhilippinesDatetimeToUtc($targetEndDate);
         
         // Set position to be at the end of the column
         $maxPosition = Task::find()
@@ -471,11 +534,11 @@ class BoardController extends Controller
                 'category_id' => $task->category_id,
                 'priority' => $task->priority,
                 'status' => $task->status,
-                'deadline' => $task->deadline ? date('Y-m-d\TH:i', $task->deadline) : '',
+                'deadline' => $this->convertUtcToPhilippinesDatetime($task->deadline) ?: '',
                 'assigned_to' => $task->assigned_to,
                 'include_in_export' => $task->include_in_export,
-                'target_start_date' => $task->target_start_date ? date('Y-m-d', $task->target_start_date) : '',
-                'target_end_date' => $task->target_end_date ? date('Y-m-d', $task->target_end_date) : '',
+                'target_start_date' => $this->convertUtcToPhilippinesDatetime($task->target_start_date) ?: '',
+                'target_end_date' => $this->convertUtcToPhilippinesDatetime($task->target_end_date) ?: '',
             ]
         ];
     }
@@ -525,11 +588,11 @@ class BoardController extends Controller
         $task->status = $status;
         $task->assigned_to = $assignedTo;
         $task->include_in_export = (int) $includeInExport; // Ensure it's stored as integer
-        $task->target_start_date = $targetStartDate ? strtotime($targetStartDate) : null;
-        $task->target_end_date = $targetEndDate ? strtotime($targetEndDate) : null;
+        $task->target_start_date = $this->convertPhilippinesDatetimeToUtc($targetStartDate);
+        $task->target_end_date = $this->convertPhilippinesDatetimeToUtc($targetEndDate);
         
         if ($deadline) {
-            $task->deadline = strtotime($deadline);
+            $task->deadline = $this->convertPhilippinesDatetimeToUtc($deadline);
         }
 
         // Log the status change for debugging
@@ -603,13 +666,13 @@ class BoardController extends Controller
             ];
         }
 
-        // Format dates
-        $createdAt = $task->created_at ? date('M j, Y g:i A', $task->created_at) : 'N/A';
-        $updatedAt = $task->updated_at ? date('M j, Y g:i A', $task->updated_at) : 'N/A';
-        $deadline = $task->deadline ? date('M j, Y g:i A', $task->deadline) : 'No deadline';
-        $completedAt = $task->completed_at ? date('M j, Y g:i A', $task->completed_at) : null;
-        $targetStartDate = $task->target_start_date ? date('M j, Y', $task->target_start_date) : null;
-        $targetEndDate = $task->target_end_date ? date('M j, Y', $task->target_end_date) : null;
+        // Format dates in Philippines timezone
+        $createdAt = $task->created_at ? $this->convertUtcToPhilippinesDatetime($task->created_at, 'M j, Y g:i A') : 'N/A';
+        $updatedAt = $task->updated_at ? $this->convertUtcToPhilippinesDatetime($task->updated_at, 'M j, Y g:i A') : 'N/A';
+        $deadline = $task->deadline ? $this->convertUtcToPhilippinesDatetime($task->deadline, 'M j, Y g:i A') : 'No deadline';
+        $completedAt = $task->completed_at ? $this->convertUtcToPhilippinesDatetime($task->completed_at, 'M j, Y g:i A') : null;
+        $targetStartDate = $task->target_start_date ? $this->convertUtcToPhilippinesDatetime($task->target_start_date, 'M j, Y') : null;
+        $targetEndDate = $task->target_end_date ? $this->convertUtcToPhilippinesDatetime($task->target_end_date, 'M j, Y') : null;
 
         // Get priority and status labels from the Task model to ensure consistency
         $priorityLabels = Task::getPriorityOptions();

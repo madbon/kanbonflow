@@ -11,6 +11,7 @@ return [
     'basePath' => dirname(__DIR__),
     'bootstrap' => ['log'],
     'controllerNamespace' => 'frontend\controllers',
+    'timeZone' => 'Asia/Manila',
     'modules' => [
         'kanban' => [
             'class' => 'common\modules\kanban\Module',

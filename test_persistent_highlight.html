@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Persistent Checklist Highlight Test</title>
+    <style>
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .checklist-item:hover {
+            background: #e9ecef;
+            border-color: #dee2e6;
+        }
+
+        .checklist-item.highlighted {
+            background-color: #fff3cd !important;
+            border-color: #ffeaa7 !important;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .checklist-checkbox {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .checklist-text {
+            flex: 1;
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            resize: none;
+        }
+
+        .checklist-delete {
+            margin-left: 8px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #checklistContainer {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+
+        .test-buttons {
+            margin: 20px;
+            text-align: center;
+        }
+
+        .test-buttons button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .refresh-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        .clear-btn {
+            background: #dc3545;
+            color: white;
+        }
+
+        .storage-info {
+            margin: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Persistent Checklist Highlight Test</h2>
+    
+    <div class="instructions">
+        <strong>Test the persistent highlight feature:</strong>
+        <ul>
+            <li>Click on any checklist item body to highlight it</li>
+            <li>Click "Refresh Page" - the highlight should persist</li>
+            <li>Or manually refresh your browser - the highlight should remain</li>
+            <li>Click the highlighted item again to remove the highlight</li>
+            <li>Click "Clear Storage" to reset the test</li>
+        </ul>
+    </div>
+
+    <div class="test-buttons">
+        <button class="refresh-btn" onclick="location.reload()">Refresh Page</button>
+        <button class="clear-btn" onclick="clearStorage()">Clear Storage</button>
+    </div>
+
+    <div class="storage-info" id="storageInfo">
+        localStorage: <span id="storageValue">No item stored</span>
+    </div>
+
+    <div id="checklistContainer">
+        <div class="checklist-item" data-item-id="1">
+            <input type="checkbox" class="checklist-checkbox">
+            <textarea class="checklist-text" rows="1">Review project requirements</textarea>
+            <button class="checklist-delete">Delete</button>
+        </div>
+
+        <div class="checklist-item" data-item-id="2">
+            <input type="checkbox" class="checklist-checkbox">
+            <textarea class="checklist-text" rows="1">Create database schema</textarea>
+            <button class="checklist-delete">Delete</button>
+        </div>
+
+        <div class="checklist-item" data-item-id="3">
+            <input type="checkbox" class="checklist-checkbox">
+            <textarea class="checklist-text" rows="1">Implement user authentication</textarea>
+            <button class="checklist-delete">Delete</button>
+        </div>
+
+        <div class="checklist-item" data-item-id="4">
+            <input type="checkbox" class="checklist-checkbox">
+            <textarea class="checklist-text" rows="1">Design user interface</textarea>
+            <button class="checklist-delete">Delete</button>
+        </div>
+
+        <div class="checklist-item" data-item-id="5">
+            <input type="checkbox" class="checklist-checkbox">
+            <textarea class="checklist-text" rows="1">Write unit tests</textarea>
+            <button class="checklist-delete">Delete</button>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Restore highlighted items on page load
+            restoreHighlightedItems();
+            updateStorageInfo();
+
+            // Checklist item highlight/focus functionality
+            $(document).on('click', '.checklist-item', function(e) {
+                // Don't highlight if clicking on checkbox, textarea, or buttons
+                if ($(e.target).is('.checklist-checkbox, .checklist-text, .checklist-delete')) {
+                    return;
+                }
+                
+                // Prevent text selection when clicking to highlight
+                e.preventDefault();
+                
+                var itemId = $(this).data('item-id');
+                var wasHighlighted = $(this).hasClass('highlighted');
+                
+                // Remove highlight from all items first
+                $('.checklist-item').removeClass('highlighted');
+                clearAllHighlightedItems();
+                
+                // Add highlight to this item only if it wasn't already highlighted
+                if (!wasHighlighted) {
+                    $(this).addClass('highlighted');
+                    saveHighlightedItem(itemId);
+                }
+                
+                updateStorageInfo();
+            });
+
+            // Clear highlights when clicking elsewhere in checklist container
+            $(document).on('click', '#checklistContainer', function(e) {
+                if (e.target === this) {
+                    $('.checklist-item').removeClass('highlighted');
+                    clearAllHighlightedItems();
+                    updateStorageInfo();
+                }
+            });
+
+            // Prevent checkbox and delete button from triggering highlight
+            $(document).on('click', '.checklist-checkbox, .checklist-delete', function(e) {
+                e.stopPropagation();
+            });
+        });
+
+        // localStorage functions
+        function saveHighlightedItem(itemId) {
+            if (!itemId) return;
+            localStorage.setItem('kanban_highlighted_checklist_item', itemId);
+        }
+
+        function getHighlightedItem() {
+            return localStorage.getItem('kanban_highlighted_checklist_item');
+        }
+
+        function clearAllHighlightedItems() {
+            localStorage.removeItem('kanban_highlighted_checklist_item');
+        }
+
+        function restoreHighlightedItems() {
+            var highlightedItemId = getHighlightedItem();
+            if (highlightedItemId) {
+                var $item = $('.checklist-item[data-item-id="' + highlightedItemId + '"]');
+                if ($item.length) {
+                    $item.addClass('highlighted');
+                }
+            }
+        }
+
+        // Test helper functions
+        function clearStorage() {
+            clearAllHighlightedItems();
+            $('.checklist-item').removeClass('highlighted');
+            updateStorageInfo();
+            alert('Storage cleared! All highlights removed.');
+        }
+
+        function updateStorageInfo() {
+            var stored = getHighlightedItem();
+            var display = stored ? 'Item ID: ' + stored : 'No item stored';
+            $('#storageValue').text(display);
+        }
+    </script>
+</body>
+</html>

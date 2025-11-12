@@ -46,6 +46,11 @@ var KanbanBoard = {
         
         // Restore focused task from localStorage
         this.restoreFocusedTask();
+        
+        // Restore highlighted checklist items from localStorage
+        setTimeout(() => {
+            this.restoreHighlightedItems();
+        }, 500);
     },
 
     bindEvents: function() {
@@ -186,15 +191,17 @@ var KanbanBoard = {
             // Prevent text selection when clicking to highlight
             e.preventDefault();
             
-            // Toggle highlight class
+            var itemId = $(this).data('item-id');
             var wasHighlighted = $(this).hasClass('highlighted');
             
             // Remove highlight from all items first
             $('.checklist-item').removeClass('highlighted');
+            self.clearAllHighlightedItems();
             
             // Add highlight to this item only if it wasn't already highlighted
             if (!wasHighlighted) {
                 $(this).addClass('highlighted');
+                self.saveHighlightedItem(itemId);
             }
         });
 
@@ -208,15 +215,17 @@ var KanbanBoard = {
             // Prevent text selection when clicking to highlight
             e.preventDefault();
             
-            // Toggle highlight class
+            var itemId = $(this).data('item-id');
             var wasHighlighted = $(this).hasClass('highlighted');
             
             // Remove highlight from all items first
             $('.checklist-item-interactive').removeClass('highlighted');
+            self.clearAllHighlightedItems();
             
             // Add highlight to this item only if it wasn't already highlighted
             if (!wasHighlighted) {
                 $(this).addClass('highlighted');
+                self.saveHighlightedItem(itemId);
             }
         });
 
@@ -225,6 +234,8 @@ var KanbanBoard = {
             // Only clear if clicking on the container itself, not on checklist items
             if (e.target === this) {
                 $('.checklist-item, .checklist-item-interactive').removeClass('highlighted');
+                // Clear from localStorage as well
+                self.clearAllHighlightedItems();
             }
         });
 
@@ -942,6 +953,11 @@ var KanbanBoard = {
         } else {
             $('#checklistProgress').hide();
         }
+        
+        // Restore highlighted state after rendering
+        setTimeout(() => {
+            this.restoreHighlightedItems();
+        }, 50);
     },
 
     /**
@@ -1161,6 +1177,11 @@ var KanbanBoard = {
                     // Render checklist in the details section
                     var checklistHtml = self.renderChecklistForDetails(response.items);
                     $('#taskDetailsChecklist').html(checklistHtml);
+                    
+                    // Restore highlighted state after rendering
+                    setTimeout(() => {
+                        self.restoreHighlightedItems();
+                    }, 50);
                 } else {
                     // Hide the checklist section if no items
                     $('#taskDetailsChecklist').html('');
@@ -1275,6 +1296,48 @@ var KanbanBoard = {
                 self.showNotification('Failed to add step', 'error');
             }
         });
+    },
+
+    /**
+     * Save highlighted checklist item to localStorage
+     */
+    saveHighlightedItem: function(itemId) {
+        if (!itemId) return;
+        localStorage.setItem('kanban_highlighted_checklist_item', itemId);
+    },
+
+    /**
+     * Get highlighted checklist item from localStorage
+     */
+    getHighlightedItem: function() {
+        return localStorage.getItem('kanban_highlighted_checklist_item');
+    },
+
+    /**
+     * Clear all highlighted items from localStorage
+     */
+    clearAllHighlightedItems: function() {
+        localStorage.removeItem('kanban_highlighted_checklist_item');
+    },
+
+    /**
+     * Restore highlighted state for checklist items
+     */
+    restoreHighlightedItems: function() {
+        var highlightedItemId = this.getHighlightedItem();
+        if (highlightedItemId) {
+            // Try to find and highlight the item in regular checklist
+            var $regularItem = $('.checklist-item[data-item-id="' + highlightedItemId + '"]');
+            if ($regularItem.length) {
+                $regularItem.addClass('highlighted');
+            }
+            
+            // Try to find and highlight the item in interactive checklist
+            var $interactiveItem = $('.checklist-item-interactive[data-item-id="' + highlightedItemId + '"]');
+            if ($interactiveItem.length) {
+                $interactiveItem.addClass('highlighted');
+            }
+        }
     },
 
     /**

@@ -171,16 +171,102 @@ $this->title = 'Tasks Export Table';
             line-height: 18px;
         }
         
+        .history-timeline {
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .history-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #007bff, #28a745);
+        }
+        
         .history-item {
             font-size: 0.85rem;
+            position: relative;
+            padding-bottom: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .history-item::before {
+            content: '';
+            position: absolute;
+            left: -16px;
+            top: 5px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #007bff;
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px #007bff;
+            z-index: 1;
+        }
+        
+        .history-item:last-child::before {
+            background: #28a745;
+            box-shadow: 0 0 0 2px #28a745;
+        }
+        
+        .history-item:last-child {
+            padding-bottom: 5px;
+            margin-bottom: 0;
         }
         
         .history-item .history-content {
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
+            position: relative;
         }
         
-        .history-item + .history-item {
-            border-top: 1px solid #e9ecef;
+        .history-item:last-child .history-content {
+            border-left-color: #28a745;
+            background: #f8fff8;
+        }
+        
+        .history-meta {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        
+        .history-meta i {
+            margin-right: 3px;
+        }
+        
+        .timeline-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: #495057;
+            font-weight: 600;
+        }
+        
+        .timeline-header i {
+            margin-right: 6px;
+            color: #007bff;
+        }
+        
+        .single-history {
+            background: #f8f9fa;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .single-history .history-content {
+            margin-bottom: 0.5rem;
+            background: transparent;
+            padding: 0;
+            border: none;
         }
         
         .print-button {
@@ -226,6 +312,33 @@ $this->title = 'Tasks Export Table';
         @media (max-width: 768px) {
             .table-responsive {
                 font-size: 0.85rem;
+            }
+            
+            .history-timeline {
+                padding-left: 15px;
+            }
+            
+            .history-item::before {
+                left: -12px;
+                width: 6px;
+                height: 6px;
+            }
+            
+            .history-timeline::before {
+                left: 6px;
+            }
+            
+            .timeline-header {
+                font-size: 0.75rem;
+            }
+            
+            .history-content {
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
+            
+            .history-meta {
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -286,7 +399,7 @@ $this->title = 'Tasks Export Table';
                             <th style="width: 10%;">Task Category</th>
                             <th style="width: 15%;">Task Title</th>
                             <th style="width: 20%;">Task Description</th>
-                            <th style="width: 15%;">History Descriptions</th>
+                            <th style="width: 15%;">Activity Timeline</th>
                             <th style="width: 12%;">Steps Status</th>
                             <th style="width: 18%;">Last Comment</th>
                             <th style="width: 8%;">Last Updated</th>
@@ -361,17 +474,17 @@ $this->title = 'Tasks Export Table';
                                     ?>
                                     <?php if (!empty($historyDescriptions)): ?>
                                         <?php if ($hasDateFilter && count($historyDescriptions) > 1): ?>
-                                            <!-- Multiple descriptions within date range -->
-                                            <div class="task-description">
+                                            <!-- Multiple descriptions - Timeline view -->
+                                            <div class="timeline-header">
+                                                <i class="fa fa-history"></i>
                                                 <?php 
                                                 $isSameDate = ($filters['date_from'] && $filters['date_to'] && $filters['date_from'] === $filters['date_to']);
                                                 ?>
-                                                <small class="text-info mb-2 d-block">
-                                                    <i class="fa fa-calendar"></i> 
-                                                    <?= count($historyDescriptions) ?> descriptions <?= $isSameDate ? 'on ' . date('M j, Y', strtotime($filters['date_from'])) : 'in date range' ?>
-                                                </small>
+                                                <?= count($historyDescriptions) ?> activities <?= $isSameDate ? 'on ' . date('M j', strtotime($filters['date_from'])) : 'in range' ?>
+                                            </div>
+                                            <div class="history-timeline">
                                                 <?php foreach ($historyDescriptions as $index => $historyItem): ?>
-                                                    <div class="history-item <?= $index > 0 ? 'mt-2 pt-2 border-top' : '' ?>">
+                                                    <div class="history-item">
                                                         <div class="history-content">
                                                             <?php 
                                                             $historyDesc = Html::encode($historyItem['description']);
@@ -389,16 +502,20 @@ $this->title = 'Tasks Export Table';
                                                             }
                                                             ?>
                                                         </div>
-                                                        <small class="text-muted">
-                                                            <i class="fa fa-user"></i> <?= $historyItem['user'] ?> 
-                                                            <i class="fa fa-clock ml-1"></i> <?= date('M j, Y g:i A', $historyItem['created_at']) ?>
-                                                        </small>
+                                                        <div class="history-meta">
+                                                            <i class="fa fa-user"></i><?= $historyItem['user'] ?>
+                                                            <i class="fa fa-clock ml-2"></i><?= date('g:i A', $historyItem['created_at']) ?>
+                                                        </div>
                                                     </div>
                                                 <?php endforeach; ?>
                                             </div>
                                         <?php else: ?>
-                                            <!-- Single description (last one) -->
-                                            <div class="task-description">
+                                            <!-- Single description -->
+                                            <div class="single-history">
+                                                <div class="timeline-header">
+                                                    <i class="fa fa-clock"></i>
+                                                    Latest Activity
+                                                </div>
                                                 <div class="history-content">
                                                     <?php 
                                                     $historyDesc = Html::encode($historyDescriptions[0]['description']);
@@ -416,16 +533,16 @@ $this->title = 'Tasks Export Table';
                                                     }
                                                     ?>
                                                 </div>
-                                                <small class="text-muted">
-                                                    <i class="fa fa-user"></i> <?= $historyDescriptions[0]['user'] ?> 
-                                                    <i class="fa fa-clock ml-1"></i> <?= date('M j, Y g:i A', $historyDescriptions[0]['created_at']) ?>
-                                                </small>
+                                                <div class="history-meta">
+                                                    <i class="fa fa-user"></i><?= $historyDescriptions[0]['user'] ?>
+                                                    <i class="fa fa-clock ml-2"></i><?= date('M j, Y g:i A', $historyDescriptions[0]['created_at']) ?>
+                                                </div>
                                             </div>
                                         <?php endif; ?>
                                     <?php else: ?>
-                                        <div class="text-muted text-center">
-                                            <i class="fa fa-history"></i><br>
-                                            <small><?= $hasDateFilter ? 'No history in date range' : 'No history' ?></small>
+                                        <div class="text-muted text-center py-3">
+                                            <i class="fa fa-history fa-2x mb-2 d-block" style="opacity: 0.3;"></i>
+                                            <small><?= $hasDateFilter ? 'No history in date range' : 'No history available' ?></small>
                                         </div>
                                     <?php endif; ?>
                                 </td>

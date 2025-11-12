@@ -669,7 +669,10 @@ class ActivityLogController extends Controller
                 ->where(['task_id' => $task->id])
                 ->andWhere(['!=', 'description', '']);
             
-            // If date filters are applied, get all descriptions within date range
+            // Check if date_from and date_to are the same value
+            $isSameDate = ($dateFrom && $dateTo && $dateFrom === $dateTo);
+            
+            // If date filters are applied
             if ($dateFrom || $dateTo) {
                 if ($dateFrom) {
                     $fromTimestamp = strtotime($dateFrom . ' 00:00:00');
@@ -679,15 +682,26 @@ class ActivityLogController extends Controller
                     $toTimestamp = strtotime($dateTo . ' 23:59:59');
                     $historyQuery->andWhere(['<=', 'created_at', $toTimestamp]);
                 }
-                // Get all descriptions within date range, ordered by newest first
-                $historyRecords = $historyQuery->orderBy(['created_at' => SORT_DESC])->all();
-                $historyDescriptions = [];
-                foreach ($historyRecords as $record) {
-                    $historyDescriptions[] = [
-                        'description' => $record->description,
-                        'created_at' => $record->created_at,
-                        'user' => $record->user ? $record->user->username : 'Unknown'
-                    ];
+                
+                if ($isSameDate) {
+                    // Same date: get all descriptions within that single date
+                    $historyRecords = $historyQuery->orderBy(['created_at' => SORT_DESC])->all();
+                    $historyDescriptions = [];
+                    foreach ($historyRecords as $record) {
+                        $historyDescriptions[] = [
+                            'description' => $record->description,
+                            'created_at' => $record->created_at,
+                            'user' => $record->user ? $record->user->username : 'Unknown'
+                        ];
+                    }
+                } else {
+                    // Different dates: get only the latest description within date range
+                    $lastHistory = $historyQuery->orderBy(['created_at' => SORT_DESC])->one();
+                    $historyDescriptions = $lastHistory ? [[
+                        'description' => $lastHistory->description,
+                        'created_at' => $lastHistory->created_at,
+                        'user' => $lastHistory->user ? $lastHistory->user->username : 'Unknown'
+                    ]] : [];
                 }
             } else {
                 // No date filters - get only the last description
@@ -713,6 +727,7 @@ class ActivityLogController extends Controller
             $taskExtraData[$task->id] = [
                 'historyDescriptions' => $historyDescriptions,
                 'hasDateFilter' => ($dateFrom || $dateTo),
+                'isSameDate' => $isSameDate,
                 'checklistProgress' => [
                     'total' => $totalItems,
                     'completed' => $completedItems,

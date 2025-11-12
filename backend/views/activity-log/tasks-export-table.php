@@ -363,8 +363,12 @@ $this->title = 'Tasks Export Table';
                                         <?php if ($hasDateFilter && count($historyDescriptions) > 1): ?>
                                             <!-- Multiple descriptions within date range -->
                                             <div class="task-description">
+                                                <?php 
+                                                $isSameDate = ($filters['date_from'] && $filters['date_to'] && $filters['date_from'] === $filters['date_to']);
+                                                ?>
                                                 <small class="text-info mb-2 d-block">
-                                                    <i class="fa fa-calendar"></i> <?= count($historyDescriptions) ?> descriptions in date range
+                                                    <i class="fa fa-calendar"></i> 
+                                                    <?= count($historyDescriptions) ?> descriptions <?= $isSameDate ? 'on ' . date('M j, Y', strtotime($filters['date_from'])) : 'in date range' ?>
                                                 </small>
                                                 <?php foreach ($historyDescriptions as $index => $historyItem): ?>
                                                     <div class="history-item <?= $index > 0 ? 'mt-2 pt-2 border-top' : '' ?>">

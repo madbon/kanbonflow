@@ -23,29 +23,39 @@ use DateTimeZone;
 class BoardController extends Controller
 {
     /**
-     * Convert datetime-local input to UTC timestamp for Philippines timezone
-     * @param string $datetimeLocal DateTime string from datetime-local input (format: Y-m-d\TH:i)
+     * Convert datetime input to UTC timestamp for Philippines timezone
+     * @param string $dateInput DateTime string from form input (supports Y-m-d, Y-m-d\TH:i, Y-m-d\TH:i:s)
      * @return int|null UTC timestamp or null if invalid
      */
-    private function convertPhilippinesDatetimeToUtc($datetimeLocal)
+    private function convertPhilippinesDatetimeToUtc($dateInput)
     {
-        if (empty($datetimeLocal)) {
+        if (empty($dateInput)) {
             return null;
         }
         
         try {
             // Philippines timezone
             $philippinesTz = new DateTimeZone('Asia/Manila');
+            $dt = null;
             
-            // Parse the datetime-local string as Philippines time
-            $dt = DateTime::createFromFormat('Y-m-d\TH:i', $datetimeLocal, $philippinesTz);
+            // Try different formats
+            $formats = [
+                'Y-m-d\TH:i:s',  // datetime-local with seconds
+                'Y-m-d\TH:i',    // datetime-local
+                'Y-m-d H:i:s',   // standard datetime with seconds
+                'Y-m-d H:i',     // standard datetime
+                'Y-m-d',         // date only (will use 00:00:00 time)
+            ];
             
-            if (!$dt) {
-                // Try alternative format with seconds
-                $dt = DateTime::createFromFormat('Y-m-d\TH:i:s', $datetimeLocal, $philippinesTz);
+            foreach ($formats as $format) {
+                $dt = DateTime::createFromFormat($format, $dateInput, $philippinesTz);
+                if ($dt !== false) {
+                    break;
+                }
             }
             
             if (!$dt) {
+                Yii::error("Could not parse date input: '$dateInput'", 'kanban');
                 return null;
             }
             
@@ -58,7 +68,7 @@ class BoardController extends Controller
     }
 
     /**
-     * Convert UTC timestamp to Philippines datetime-local format
+     * Convert UTC timestamp to Philippines datetime format
      * @param int $utcTimestamp UTC timestamp
      * @param string $format Format string (default: Y-m-d\TH:i for datetime-local)
      * @return string|null Formatted datetime in Philippines timezone or null if invalid
@@ -537,8 +547,8 @@ class BoardController extends Controller
                 'deadline' => $this->convertUtcToPhilippinesDatetime($task->deadline) ?: '',
                 'assigned_to' => $task->assigned_to,
                 'include_in_export' => $task->include_in_export,
-                'target_start_date' => $this->convertUtcToPhilippinesDatetime($task->target_start_date) ?: '',
-                'target_end_date' => $this->convertUtcToPhilippinesDatetime($task->target_end_date) ?: '',
+                'target_start_date' => $this->convertUtcToPhilippinesDatetime($task->target_start_date, 'Y-m-d') ?: '',
+                'target_end_date' => $this->convertUtcToPhilippinesDatetime($task->target_end_date, 'Y-m-d') ?: '',
             ]
         ];
     }

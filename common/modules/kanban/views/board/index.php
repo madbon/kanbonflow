@@ -921,7 +921,7 @@ $this->registerCss('
         border: 1px solid #e9ecef;
         border-radius: 4px;
         transition: all 0.2s ease;
-        cursor: move;
+        cursor: pointer;
     }
     
     .checklist-item:hover {
@@ -937,6 +937,17 @@ $this->registerCss('
     .checklist-item.completed .checklist-text {
         text-decoration: line-through;
         color: #6c757d;
+    }
+    
+    .checklist-item.highlighted {
+        background-color: #fff3cd !important;
+        border-color: #ffeaa7 !important;
+        box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        transition: all 0.3s ease;
+    }
+    
+    .checklist-item.highlighted .checklist-text {
+        background-color: transparent;
     }
     
     .checklist-checkbox {
@@ -1072,6 +1083,13 @@ $this->registerCss('
     
     .checklist-item-interactive.completed:hover {
         background: #e8f5e8;
+    }
+    
+    .checklist-item-interactive.highlighted {
+        background-color: #fff3cd !important;
+        border-left: 4px solid #ffc107;
+        box-shadow: 0 0 8px rgba(255, 193, 7, 0.4);
+        transition: all 0.3s ease;
     }
     
     .checklist-checkbox-details {

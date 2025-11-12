@@ -176,6 +176,58 @@ var KanbanBoard = {
             self.deleteChecklistItem(itemId);
         });
 
+        // Checklist item highlight/focus functionality
+        $(document).on('click', '.checklist-item', function(e) {
+            // Don't highlight if clicking on checkbox, textarea, or buttons
+            if ($(e.target).is('.checklist-checkbox, .checklist-text, .checklist-delete, .checklist-drag-handle, .fa')) {
+                return;
+            }
+            
+            // Prevent text selection when clicking to highlight
+            e.preventDefault();
+            
+            // Toggle highlight class
+            var wasHighlighted = $(this).hasClass('highlighted');
+            
+            // Remove highlight from all items first
+            $('.checklist-item').removeClass('highlighted');
+            
+            // Add highlight to this item only if it wasn't already highlighted
+            if (!wasHighlighted) {
+                $(this).addClass('highlighted');
+            }
+        });
+
+        // Checklist item highlight/focus functionality for details modal
+        $(document).on('click', '.checklist-item-interactive', function(e) {
+            // Don't highlight if clicking on checkbox, textarea, or buttons  
+            if ($(e.target).is('.checklist-checkbox-details, .checklist-text-details, .fa')) {
+                return;
+            }
+            
+            // Prevent text selection when clicking to highlight
+            e.preventDefault();
+            
+            // Toggle highlight class
+            var wasHighlighted = $(this).hasClass('highlighted');
+            
+            // Remove highlight from all items first
+            $('.checklist-item-interactive').removeClass('highlighted');
+            
+            // Add highlight to this item only if it wasn't already highlighted
+            if (!wasHighlighted) {
+                $(this).addClass('highlighted');
+            }
+        });
+
+        // Clear highlights when clicking elsewhere in checklist container
+        $(document).on('click', '#checklistContainer, #detailsChecklistItems', function(e) {
+            // Only clear if clicking on the container itself, not on checklist items
+            if (e.target === this) {
+                $('.checklist-item, .checklist-item-interactive').removeClass('highlighted');
+            }
+        });
+
         // Interactive checklist in task details modal
         $(document).on('click', '.checklist-checkbox-details', function() {
             var itemId = $(this).closest('.checklist-item-interactive').data('item-id');

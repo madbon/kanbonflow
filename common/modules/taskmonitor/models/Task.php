@@ -414,12 +414,13 @@ class Task extends \yii\db\ActiveRecord
     public static function getTasksTargetedForTodayCount()
     {
         $today = strtotime(date('Y-m-d'));
+        $endOfToday = $today + (24 * 60 * 60) - 1; // End of today (23:59:59)
         
         return self::find()
-            ->where(['<=', 'target_start_date', $today])
-            ->andWhere(['>=', 'target_end_date', $today])
-            ->andWhere(['not', ['target_start_date' => null]])
+            ->where(['not', ['target_start_date' => null]])
             ->andWhere(['not', ['target_end_date' => null]])
+            ->andWhere(['<=', 'target_start_date', $endOfToday])  // Start date is before or on today
+            ->andWhere(['>=', 'target_end_date', $today])         // End date is after or on today
             ->count();
     }
 }

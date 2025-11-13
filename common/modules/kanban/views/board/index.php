@@ -932,6 +932,8 @@ $this->registerCss('
         border-radius: 8px;
         cursor: pointer;
         position: relative;
+        flex-direction: column;
+        padding: 50px 10px;
     }
     
     .kanban-column.collapsed .kanban-column-header .column-title {
@@ -940,11 +942,15 @@ $this->registerCss('
         font-size: 14px;
         font-weight: 600;
         margin: 0;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-50%) rotate(180deg);
     }
     
     .kanban-column.collapsed .kanban-column-header .task-count {
         position: absolute;
-        top: 10px;
+        top: 15px;
         left: 50%;
         transform: translateX(-50%);
         writing-mode: horizontal-tb;
@@ -956,14 +962,16 @@ $this->registerCss('
         justify-content: center;
         font-size: 11px;
         border-radius: 10px;
+        z-index: 2;
     }
     
     .kanban-column.collapsed .kanban-column-header i {
         position: absolute;
-        bottom: 10px;
+        bottom: 15px;
         left: 50%;
         transform: translateX(-50%);
         font-size: 16px;
+        z-index: 2;
     }
     
     .kanban-column.collapsed .kanban-column-header .column-actions {
@@ -1009,13 +1017,14 @@ $this->registerCss('
     .kanban-column.collapsed .kanban-column-header::after {
         content: "+";
         position: absolute;
-        top: 40px;
+        top: 45px;
         left: 50%;
         transform: translateX(-50%);
         color: #6c757d;
-        font-size: 14px;
+        font-size: 12px;
         opacity: 0.7;
         font-weight: bold;
+        z-index: 3;
     }
 
     /* Checklist Styles */

@@ -911,6 +911,113 @@ $this->registerCss('
         }
     }
     
+    /* Column Collapse/Expand Functionality */
+    .kanban-column {
+        transition: all 0.3s ease;
+    }
+    
+    .kanban-column.collapsed {
+        width: 60px !important;
+        min-width: 60px !important;
+        flex: none;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header {
+        writing-mode: vertical-lr;
+        text-orientation: mixed;
+        height: 300px;
+        width: 60px;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header .column-title {
+        transform: rotate(180deg);
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header .task-count {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        writing-mode: horizontal-tb;
+        text-orientation: mixed;
+        min-width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        border-radius: 10px;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header i {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 16px;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header .column-actions {
+        display: none;
+    }
+    
+    .kanban-column.collapsed .kanban-column-body {
+        display: none;
+    }
+    
+    .kanban-column:not(.collapsed) .kanban-column-header {
+        cursor: pointer;
+    }
+    
+    .kanban-column-header:hover {
+        background: #f8f9fa;
+    }
+    
+    .kanban-column.collapsed .kanban-column-header:hover {
+        background: #e9ecef;
+    }
+    
+    /* Collapse indicator for expanded columns */
+    .kanban-column:not(.collapsed) .kanban-column-header::after {
+        content: "−";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        color: #6c757d;
+        font-size: 12px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    
+    .kanban-column:not(.collapsed) .kanban-column-header:hover::after {
+        opacity: 0.7;
+    }
+    
+    /* Expand indicator for collapsed columns */
+    .kanban-column.collapsed .kanban-column-header::after {
+        content: "+";
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #6c757d;
+        font-size: 14px;
+        opacity: 0.7;
+        font-weight: bold;
+    }
+
     /* Checklist Styles */
     .checklist-item {
         display: flex;

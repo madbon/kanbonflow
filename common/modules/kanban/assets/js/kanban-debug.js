@@ -47,6 +47,9 @@ var KanbanBoard = {
         // Restore focused task from localStorage
         this.restoreFocusedTask();
         
+        // Restore collapsed column states from localStorage
+        this.restoreCollapsedColumns();
+        
         // Restore highlighted checklist items from localStorage
         setTimeout(() => {
             this.restoreHighlightedItems();
@@ -118,6 +121,23 @@ var KanbanBoard = {
             e.stopPropagation();
             var columnId = $(this).data('column-id');
             self.deleteColumn(columnId);
+        });
+
+        // Column header click to collapse/expand
+        $(document).on('click', '.kanban-column-header', function(e) {
+            // Don't trigger if clicking on action buttons
+            if ($(e.target).closest('.column-actions').length || 
+                $(e.target).closest('.btn-column-edit, .btn-column-delete').length) {
+                return;
+            }
+            
+            e.stopPropagation();
+            var $column = $(this).closest('.kanban-column');
+            var columnId = $column.data('column-id');
+            var status = $column.data('status');
+            
+            console.log('Column header clicked:', status, 'Column ID:', columnId);
+            self.toggleColumnCollapse($column, status);
         });
 
         // Modal save buttons
@@ -2335,6 +2355,87 @@ var KanbanBoard = {
                 localStorage.removeItem('kanban-focused-task');
             }
         }
+    },
+
+    /**
+     * Toggle column collapse/expand state
+     */
+    toggleColumnCollapse: function($column, status) {
+        var self = this;
+        var isCollapsed = $column.hasClass('collapsed');
+        var columnName = $column.find('.column-title').text();
+        
+        console.log('Toggling column:', status, 'Currently collapsed:', isCollapsed);
+        
+        if (isCollapsed) {
+            // Expand column
+            $column.removeClass('collapsed');
+            self.showNotification('Expanded column: ' + columnName, 'info');
+            
+            // Remove from collapsed columns in localStorage
+            self.removeCollapsedColumn(status);
+        } else {
+            // Collapse column
+            $column.addClass('collapsed');
+            self.showNotification('Collapsed column: ' + columnName, 'info');
+            
+            // Save to collapsed columns in localStorage
+            self.saveCollapsedColumn(status);
+        }
+        
+        // Trigger a resize event to help with any layout adjustments
+        $(window).trigger('resize');
+    },
+
+    /**
+     * Save collapsed column state to localStorage
+     */
+    saveCollapsedColumn: function(status) {
+        var collapsedColumns = this.getCollapsedColumns();
+        if (collapsedColumns.indexOf(status) === -1) {
+            collapsedColumns.push(status);
+            localStorage.setItem('kanban-collapsed-columns', JSON.stringify(collapsedColumns));
+            console.log('Saved collapsed columns:', collapsedColumns);
+        }
+    },
+
+    /**
+     * Remove collapsed column state from localStorage
+     */
+    removeCollapsedColumn: function(status) {
+        var collapsedColumns = this.getCollapsedColumns();
+        var index = collapsedColumns.indexOf(status);
+        if (index > -1) {
+            collapsedColumns.splice(index, 1);
+            localStorage.setItem('kanban-collapsed-columns', JSON.stringify(collapsedColumns));
+            console.log('Updated collapsed columns:', collapsedColumns);
+        }
+    },
+
+    /**
+     * Get collapsed columns from localStorage
+     */
+    getCollapsedColumns: function() {
+        var stored = localStorage.getItem('kanban-collapsed-columns');
+        return stored ? JSON.parse(stored) : [];
+    },
+
+    /**
+     * Restore collapsed column states from localStorage
+     */
+    restoreCollapsedColumns: function() {
+        var self = this;
+        var collapsedColumns = self.getCollapsedColumns();
+        
+        console.log('Restoring collapsed columns:', collapsedColumns);
+        
+        collapsedColumns.forEach(function(status) {
+            var $column = $('.kanban-column[data-status="' + status + '"]');
+            if ($column.length) {
+                $column.addClass('collapsed');
+                console.log('Restored collapsed state for column:', status);
+            }
+        });
     },
 
     /**

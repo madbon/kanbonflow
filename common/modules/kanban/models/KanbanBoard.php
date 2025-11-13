@@ -481,6 +481,7 @@ class KanbanBoard
             ->andWhere(['not', ['target_end_date' => null]])
             ->andWhere(['<=', 'target_start_date', $endOfToday])  // Start date is before or on today
             ->andWhere(['>=', 'target_end_date', $today])         // End date is after or on today
+            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])  // Exclude completed tasks
             ->orderBy([
                 'priority' => SORT_DESC,
                 'deadline' => SORT_ASC,

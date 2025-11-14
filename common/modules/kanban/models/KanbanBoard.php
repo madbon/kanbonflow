@@ -57,8 +57,9 @@ class KanbanBoard
         $settings = TaskColorSettings::getActiveSettings();
         $statistics = [];
         
-        // Base query for non-completed tasks
-        $baseQuery = Task::find()->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
+        // Base query for non-completed and non-inactive tasks
+        $baseQuery = Task::find()->andWhere(['!=', 'status', Task::STATUS_COMPLETED])
+                                  ->andWhere(['!=', 'status', 'inactive']);
         
         // Add special "Due Today" category first
         $todayQuery = clone $baseQuery;
@@ -395,10 +396,11 @@ class KanbanBoard
         $today = strtotime('today');
         $tomorrow = strtotime('tomorrow');
         
-        // Base query for non-completed tasks
+        // Base query for non-completed and non-inactive tasks
         $query = Task::find()
             ->with(['category'])
-            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED]);
+            ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])
+            ->andWhere(['!=', 'status', 'inactive']);
         
         switch ($categoryKey) {
             case 'overdue':
@@ -482,6 +484,7 @@ class KanbanBoard
             ->andWhere(['<=', 'target_start_date', $endOfToday])  // Start date is before or on today
             ->andWhere(['>=', 'target_end_date', $today])         // End date is after or on today
             ->andWhere(['!=', 'status', Task::STATUS_COMPLETED])  // Exclude completed tasks
+            ->andWhere(['!=', 'status', 'inactive'])              // Exclude inactive tasks
             ->orderBy([
                 'priority' => SORT_DESC,
                 'deadline' => SORT_ASC,

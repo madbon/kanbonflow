@@ -276,7 +276,7 @@ class Task extends \yii\db\ActiveRecord
      */
     public function isOverdue()
     {
-        return $this->deadline < time() && $this->status !== self::STATUS_COMPLETED;
+        return $this->deadline < time() && $this->status !== self::STATUS_COMPLETED && $this->status !== 'inactive';
     }
 
     /**
@@ -422,6 +422,7 @@ class Task extends \yii\db\ActiveRecord
             ->andWhere(['<=', 'target_start_date', $endOfToday])  // Start date is before or on today
             ->andWhere(['>=', 'target_end_date', $today])         // End date is after or on today
             ->andWhere(['!=', 'status', self::STATUS_COMPLETED])  // Exclude completed tasks
+            ->andWhere(['!=', 'status', 'inactive'])              // Exclude inactive tasks
             ->count();
     }
 }
